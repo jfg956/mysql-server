@@ -1,3 +1,15 @@
+--- Begin of branch notes.
+
+This is a branch of [jfg956/mysql-server](https://github.com/jfg956/mysql-server).
+
+The branch link is: ...tbc... (cannot put link before first push).
+
+This branch is for fixing [Bug#109200](https://bugs.mysql.com/bug.php?id=109200).
+
+More about this work in [jfg_brain_dump.md](jfg_brain_dump.md).
+
+--- End of branch notes.
+
 Copyright (c) 2000, 2023, Oracle and/or its affiliates.
 
 This is a release of MySQL, an SQL database server.
