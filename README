@@ -1,12 +1,12 @@
 --- Begin of branch notes.
 
-This is a branch of [jfg956/mysql-server](https://github.com/jfg956/mysql-server).
+This is a branch of https://github.com/jfg956/mysql-server.
 
-The branch link is: ...tbc... (cannot put link before first push).
+The branch link is https://github.com/jfg956/mysql-server/tree/bug109200.
 
-This branch is for fixing [Bug#109200](https://bugs.mysql.com/bug.php?id=109200).
+This branch is for fixing https://bugs.mysql.com/bug.php?id=109200.
 
-More about this work in [jfg_brain_dump.md](jfg_brain_dump.md).
+More about this work in https://github.com/jfg956/mysql-server/blob/bug109200/jfg_brain_dump.md.
 
 --- End of branch notes.
 
