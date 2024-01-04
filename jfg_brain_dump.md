@@ -6,7 +6,22 @@ The initial idea was to fix [Bug#109200](https://bugs.mysql.com/bug.php?id=10920
 This is pre-requisite work for another project: LRU flushing improvements.
 
 But this ended-up being a bigger rabbit hole than initially thought,
-full brain dump below.
+full brain dump in the rest of this file, TL&DR:
+- I initially thought 5.6 was not affected, this was not fully true;
+- I initially thought 5.7 was affected, this was wrong;
+- I found the work that introduced the bug in 8.0, classic ommittion error;
+- but at the same time, I saw a problem introduced in 5.7 (`BUF_LRU_SEARCH_SCAN_THRESHOLD`);
+- ...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### Reminder of the bug
+
+...
+
+https://bugs.mysql.com/bug.php?id=109200
+
+...
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -18,7 +33,8 @@ Link to `buf_LRU_free_from_common_LRU_list` of 8.0.35:
 Because initial value of `scanned` (`ulint scanned{}`), if a page is freed in
 the 1st iteration of the for-loop, we are skipping `++scanned` (because
 of the `if (freed) break`) so we are not reaching
-`MONITOR_INC_VALUE_CUMULATIVE` (because it is in a `if (scanned)`.
+`MONITOR_INC_VALUE_CUMULATIVE` (because it is in a `if (scanned)` with `scanned`
+not having been incremented).
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -28,8 +44,9 @@ Link to `buf_LRU_free_from_common_LRU_list` of 5.6.51:
 - https://github.com/jfg956/mysql-server/blob/mysql-5.6.51/storage/innobase/buf/buf0lru.cc#L1002
 
 If a page is freed in the first iteration of the loop, `scanned` will be 2 when
-exiting the loop (because `scanned = 1` and `++scanned`).  So instead of
-incrementing by 1, we increment by 2.
+exiting the loop (because initialized as
+`scanned = 1` and `++scanned` before the for-loop ends).  So instead of
+incrementing by 1, we increment by 2, which reports the wrong metric.
 
 (Above is from code interpretation, to be confirmed by a test.)
 
@@ -40,36 +57,44 @@ incrementing by 1, we increment by 2.
 Link to `buf_LRU_free_from_common_LRU_list` of 5.7.44:
 - https://github.com/jfg956/mysql-server/blob/mysql-5.7.44/storage/innobase/buf/buf0lru.cc#L1054
 
-Initialized at 0, will get `++scanned`, so 1 as expected.
+The `scanned` variable is initialized at 0, runs `++scanned` before the for-loop
+ends, so 1 as expected which enters the `if (scanned)`.
 
 ...BUF_LRU_SEARCH_SCAN_THRESHOLD...
 
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 ### The problem in 8.0 is `if (freed) break;`
 
-...
+So, the problem is not in 5.7, but it is in 8.0.  What is the difference ?
 
+Link to `buf_LRU_free_from_common_LRU_list` of 5.7.44:
+- https://github.com/jfg956/mysql-server/blob/mysql-5.7.44/storage/innobase/buf/buf0lru.cc#L1054
 
-### WL#8423 introduces `if (freed) break;`...
+Link to `buf_LRU_free_from_common_LRU_list` of 8.0.35:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0lru.cc#L1094
 
-In below:
-- go to storage/innobase/buf/buf0lru.cc
-- search for buf_LRU_free_from_common_LRU_list
+The difference if the `if (freed) break` (simplified), exact link in 8.0.35:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0lru.cc#L1125
 
-https://github.com/jfg956/mysql-server/commit/2bcc00d11f21fe43ba3c0e0f81d3d9cec44c44a0
+WL#8423 introduces `if (freed) break`.  Getting there is a little convoluted,
+- in https://github.com/jfg956/mysql-server/commit/2bcc00d11f21fe43ba3c0e0f81d3d9cec44c44a0...
+- go to storage/innobase/buf/buf0lru.cc...
+- search for buf_LRU_free_from_common_LRU_list...
+- and you will see `if (freed) break` added by above commit.
 
 Link to WL#8423:
 - https://dev.mysql.com/worklog/task/?id=8423
 
 ...TODO: get a pdf of this WL...
 
-Link to `if (freed) break;`:
+Link to `if (freed) break` in WL#8423 commit:
 - https://github.com/jfg956/mysql-server/blob/2bcc00d11f21fe43ba3c0e0f81d3d9cec44c44a0/storage/innobase/buf/buf0lru.cc#L1127
 
 This `...break;` construct is weird, because the for-loop condition includes
 `!freed`...
 
-Link to `!freed`:
+Link to `!freed` in WL#8423 commit:
 - https://github.com/jfg956/mysql-server/blob/2bcc00d11f21fe43ba3c0e0f81d3d9cec44c44a0/storage/innobase/buf/buf0lru.cc#L1094C10-L1094C16
 
 ...I can only guess, because no explaination in the code, that it is to avoid
@@ -78,7 +103,8 @@ the `bpage = ...` part of the for-loop...
 Link to `bpage = ...`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0lru.cc#L1104
 
-...but this `break` also bypass the `++scanned`, so it needs to be added there.
+...but this `break` also bypass the `++scanned` part of the for-loop.  So a fix to
+Bug#109200 is to add `++scanned` in the `if (freed)`.
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
