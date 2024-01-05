@@ -118,5 +118,29 @@ https://github.com/mysql/mysql-server/commit/6ef8c343445a26aaf9ebd76d72cf57db44b
 
 ...
 
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### `MONITOR_LRU` InnoDB Metrics Code Paths
+
+...
+
+```
+...
+
+[buf_LRU_scan_and_free_block](https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0lru.cc#L1156)
+ +-> [buf_LRU_free_from_unzip_LRU_list](https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0lru.cc#L1046)
+ |    \-> [MONITOR_LRU_UNZIP_SEARCH_SCANNED](https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0lru.cc#L1080)
+ +-> [buf_LRU_free_from_common_LRU_list](https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0lru.cc#L1094)
+      \-> [MONITOR_LRU_SEARCH_SCANNED](https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0lru.cc#L1145)
+
+[buf_flush_single_page_from_LRU](https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0flu.cc#L2156)
+ \-> MONITOR_LRU_SINGLE_FLUSH_SCANNED
+
+...
+```
+
+...
+
+
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 <!-- EOF -->
