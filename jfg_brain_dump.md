@@ -119,6 +119,21 @@ https://github.com/mysql/mysql-server/commit/6ef8c343445a26aaf9ebd76d72cf57db44b
 ...
 
 
+### MySQL does not refill the free list unless...
+
+...
+
+Valid for 5.6, 5.7 and 8.0...
+
+To test for 8.2...
+
+Emptying the free list with a SELECT does not trigger a refill...
+
+The next write will trigger a refill !
+
+...
+
+
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 ### `MONITOR_LRU` InnoDB Metrics Code Paths
 
@@ -136,6 +151,20 @@ https://github.com/mysql/mysql-server/commit/6ef8c343445a26aaf9ebd76d72cf57db44b
 <a href="https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0flu.cc#L2156">buf_flush_single_page_from_LRU<a>
  \-> MONITOR_LRU_SINGLE_FLUSH_SCANNED
 
+
+Below thread created in <a href="https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0flu.cc#L2826C6-L2826C33">buf_flush_page_cleaner_init</a>.
+
+<a href="https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0flu.cc#L3179">buf_flush_page_coordinator_thread</a>
+ +-> create more page cleaner threads which are calling buf_flush_page_cleaner_thread.
+ +-> pc_flush_slot
+
+<a href="https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0flu.cc#L3602">buf_flush_page_cleaner_thread</a>
+ +-> pc_flush_slot
+
+<a href="https://github.com/jfg956/mysql-server/blob/mysql-8.0.35/storage/innobase/buf/buf0flu.cc#L2930">pc_flush_slot</a>
+ +-> ...
+
+<a href="">
 ...
 </pre>
 
