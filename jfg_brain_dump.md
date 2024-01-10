@@ -13,13 +13,13 @@ This will be a heavier lift than it could initially seem, because the
 function only has `trx_wait_binlog_name` and `trx_wait_binlog_pos` as arguments,
 no GTID information.
 
-Thinking about this a little more, the fact that there are no GTID reference in
-the semi-sync code probably comes from the history of this plugin.
-[The plughin was introduced in MySQL 5.5.7](https://github.com/jfg956/mysql-server/tree/mysql-5.5.7/plugin/semisync)
-and GTIDs are a MySQL 5.6 feature.
+Thinking about this a little more, the fact that there is no GTID reference in
+the semi-sync code probably comes from the history of the plugin.
+[The plugin was introduced in MySQL 5.5.7](https://github.com/jfg956/mysql-server/tree/mysql-5.5.7/plugin/semisync)
+and GTIDs are a feature of MySQL 5.6.
 
-More information about the analysis of thic change is available in the section
-[Semi-Sync Plugin Notes](#semi-synci-plugin-notes).
+More information about the analysis of the change needed for fixing Bug#113598
+is available in the section [Semi-Sync Plugin Notes](#semi-sync-plugin-notes).
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -52,18 +52,23 @@ If we are able to get a GTID from the parameter of `repl_semi_report_commit`
 But `ReplSemiSyncMaster:commitTrx` is also called in
 [`repl_semi_report_binlog_sync`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L95)
 where the transaction information is not available.  This code-path is used for
-`WAIT_AFTER_SYNC`, which is not the lossless semi-sync of 5.7, we might just not
-put the GTID in there.  Or if we want the GTID here, we could "remember" it from
-the `repl_semi_report_commit` function.
+`WAIT_AFTER_SYNC` ([rpl_semi_sync_master_wait_point](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_wait_point)),
+which is not the lossless semi-sync of 5.7.  These days, almost
+everyone should be using `WAIT_AFTER_COMMIT`
+(more about the difference in [Question about Semi-Synchronous Replication: the Answer with All the Details](https://percona.community/blog/2018/08/23/question-about-semi-synchronous-replication-answer-with-all-the-details/)).
+We could could compromise in fixing Bug#113598 only for lossless semi-sync.
+Or if we want the GTID also for the legacy semi-sync (`WAIT_AFTER_SYNC`), we could 
+save the GTID in the `repl_semi_report_commit` function for usage in
+`repl_semi_report_binlog_sync`.
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
-### Other Usefull Notes
+### Other Notes
 
 Semi-sync doc:
 - https://dev.mysql.com/doc/refman/8.0/en/replication-semisync.html
 
-There are two versions of the plugin the master/slave version, and the
+There are two versions of the plugin: the master/slave version and the
 source/replica version.  The code is shared, and adapted at compile-time
 with the macro `USE_OLD_SEMI_SYNC_TERMINOLOGY`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L43
