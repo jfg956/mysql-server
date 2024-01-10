@@ -47,7 +47,8 @@ One of these observers is [`repl_semi_report_commit`](https://github.com/jfg956/
 in which `ReplSemiSyncMaster:commitTrx` is called.
 
 If we are able to get a GTID from the parameter of `repl_semi_report_commit`
-(`Trans_param *param`), this might be an easy change.
+(`Trans_param *param`), we will be able to push this information to `commitTrx`.
+More about this in the section [Trans_param](#trans_param)
 
 But `ReplSemiSyncMaster:commitTrx` is also called in
 [`repl_semi_report_binlog_sync`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L95)
@@ -60,6 +61,29 @@ We could could compromise in fixing Bug#113598 only for lossless semi-sync.
 Or if we want the GTID also for the legacy semi-sync (`WAIT_AFTER_SYNC`), we could 
 save the GTID in the `repl_semi_report_commit` function for usage in
 `repl_semi_report_binlog_sync`.
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### Trans_param
+
+`Trans_param` definition:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/replication.h#L132
+
+It contains a `Trans_gtid_info`:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/replication.h#L151
+
+`Trans_gtid_info` definition:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/replication.h#L121
+
+This definition is not super clear.  There is a sid, a sidno and a gno.
+
+`sid` (type `rpl_sid`) is the UUID:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L293
+
+`sid` means Source Id:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L99
+
+...
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
