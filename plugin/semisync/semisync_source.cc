@@ -789,9 +789,16 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
 
       if (wait_result != 0) {
         /* This is a real wait timeout. */
-        LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT,
-               trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
-               reply_file_name_, (unsigned long)reply_file_pos_);
+        if (0) {
+          LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT,
+                 trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
+                 reply_file_name_, (unsigned long)reply_file_pos_);
+        } else {
+          LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
+                 trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
+                 "to be completed",
+                 reply_file_name_, (unsigned long)reply_file_pos_);
+        }
         rpl_semi_sync_source_wait_timeouts++;
 
         /* switch semi-sync off */
