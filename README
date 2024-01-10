@@ -8,6 +8,8 @@ This branch is for fixing https://bugs.mysql.com/bug.php?id=113598.
 
 More about this work in https://github.com/jfg956/mysql-server/blob/bug113598/jfg_brain_dump.md.
 
+Fake PR for this branch: https://github.com/jfg956/mysql-server/pull/1.
+
 --- End of branch notes.
 
 Copyright (c) 2000, 2023, Oracle and/or its affiliates.
