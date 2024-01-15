@@ -633,7 +633,8 @@ l_end:
 }
 
 int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
-                                  my_off_t trx_wait_binlog_pos) {
+                                  my_off_t trx_wait_binlog_pos,
+                                  const Trans_gtid_info *trx_gtid_info) {
   const char *kWho = "ReplSemiSyncMaster::commitTrx";
 
   function_enter(kWho);
@@ -794,9 +795,29 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
                  reply_file_name_, (unsigned long)reply_file_pos_);
         } else {
+          char str_gtid[36+1+20+1]; // 36 (size of UUID) ":" 20 (max len of a uint64) "\0".
+          if (!trx_gtid_info) {
+            str_gtid = "unavailable";
+          } else if (trx_gtid_info->type == ANONYMOUS_GTID) {
+            str_gtid = "ANONYMOUS";
+          } else {
+            // Inspired from Gtid::to_string from sql/rpl_gtid_misc.cc.
+            // TODO: avoid code duplication.
+            /*
+              char *s = buf + sid.to_string(buf);
+              *s = ':';
+              s++;
+              s += format_gno(s, gno);
+              return (int)(s - buf);
+            */
+            int n = trx_gtid_info->sid.to_string(str_gtid);
+            str_gtid[n++] = ':';
+            n += format_gno(str_gtid + n, trx_gtid_info->gno);
+            str_gtid[n] = '\0';
+          }
           LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
-                 "to be completed",
+                 str_gtid,
                  reply_file_name_, (unsigned long)reply_file_pos_);
         }
         rpl_semi_sync_source_wait_timeouts++;
