@@ -71,6 +71,13 @@ semi-sync, and the lossless semi-sync of 5.7 uses the
 reference `Trans_gtid_info` from `Trans_param` to fix this).  I realized this
 doing tests and need to pivot.
 
+When checking `enum_gtid_type`, I saw that one a trx is assigned a GTID, this
+is indicated in thd:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L3707
+
+So we could use `current_thd` to get the GTID of the trx:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L591
+
 ...
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->

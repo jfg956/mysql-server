@@ -96,7 +96,7 @@ static int repl_semi_report_binlog_sync(Binlog_storage_param *,
                                         const char *log_file,
                                         my_off_t log_pos) {
   if (rpl_semi_sync_source_wait_point == WAIT_AFTER_SYNC)
-    return repl_semisync->commitTrx(log_file, log_pos, nullptr);
+    return repl_semisync->commitTrx(log_file, log_pos);
   return 0;
 }
 
@@ -112,7 +112,7 @@ static int repl_semi_report_commit(Trans_param *param) {
   if (rpl_semi_sync_source_wait_point == WAIT_AFTER_COMMIT && is_real_trans &&
       param->log_pos) {
     const char *binlog_name = param->log_file;
-    return repl_semisync->commitTrx(binlog_name, param->log_pos, &(param->gtid_info));
+    return repl_semisync->commitTrx(binlog_name, param->log_pos);
   }
   return 0;
 }

@@ -633,8 +633,7 @@ l_end:
 }
 
 int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
-                                  my_off_t trx_wait_binlog_pos,
-                                  const Trans_gtid_info *trx_gtid_info) {
+                                  my_off_t trx_wait_binlog_pos) {
   const char *kWho = "ReplSemiSyncMaster::commitTrx";
 
   function_enter(kWho);
@@ -795,30 +794,13 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
                  reply_file_name_, (unsigned long)reply_file_pos_);
         } else {
-          const char *gtid;
-          char buf[36+1+20+1]; // 36 (size of UUID) ":" 20 (max len of a uint64) "\0".
-          if (!trx_gtid_info) {
-            // The gtid is unavailable in caller when WAIT_AFTER_SYNC.
-            gtid = "unavailable";
-          } else if (trx_gtid_info->type == ANONYMOUS_GTID) {
-            gtid = "ANONYMOUS";
-          } else {
-            // Inspired from Gtid::to_string from sql/rpl_gtid_misc.cc.
-            // TODO: avoid code duplication.
-            /*
-              char *s = buf + sid.to_string(buf);
-              *s = ':';
-              s++;
-              s += format_gno(s, gno);
-              return (int)(s - buf);
-            */
-            char *s = buf + trx_gtid_info->sid.to_string(buf);
-            *s = ':';
-            s++;
-            s += format_gno(s, trx_gtid_info->gno);
-            *s = '\0';
-            gtid = buf;
-          }
+          char gtid[36+1+20+1]; // 36 (size of UUID) ":" 20 (max len of a uint64) "\0".
+          /*
+          const THD *thd = current_thd;
+          const Gtid_specification *spec = thd->variables->gtid_next;
+          gtid[spec->to_string(..., gtid)] = '\n';
+          */
+          strcpy(gtid, "to be completed");
           LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
                  gtid,
