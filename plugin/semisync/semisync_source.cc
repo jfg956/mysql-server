@@ -29,11 +29,11 @@
 #include "my_byteorder.h"
 #include "my_compiler.h"
 #include "my_systime.h"
-#include "sql/mysqld.h"  // max_connections
-#if defined(ENABLED_DEBUG_SYNC)
 #include "sql/current_thd.h"
-#include "sql/debug_sync.h"
+#include "sql/mysqld.h"  // max_connections
 #include "sql/sql_class.h"
+#if defined(ENABLED_DEBUG_SYNC)
+#include "sql/debug_sync.h"
 #endif
 
 #define TIME_THOUSAND 1000
@@ -794,17 +794,12 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
                  reply_file_name_, (unsigned long)reply_file_pos_);
         } else {
-          char gtid[36+1+20+1]; // 36 (size of UUID) ":" 20 (max len of a uint64) "\0".
-          /*
-          const THD *thd = current_thd;
-          const Gtid_specification *spec = thd->variables->gtid_next;
-          gtid[spec->to_string(..., gtid)] = '\n';
-          */
-          strcpy(gtid, "to be completed");
+          const Gtid_specification *spec = &(current_thd->variables.gtid_next);
+          char gtid[spec->MAX_TEXT_LENGTH + 1];
+          gtid[spec->to_string(global_sid_map, gtid, true)] = '\n';
           LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
-                 gtid,
-                 reply_file_name_, (unsigned long)reply_file_pos_);
+                 gtid, reply_file_name_, (unsigned long)reply_file_pos_);
         }
         rpl_semi_sync_source_wait_timeouts++;
 
