@@ -46,6 +46,8 @@ there is the registration of trans_observer, storage_observer and transmit_obser
 One of these observers is [`repl_semi_report_commit`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L109),
 in which `ReplSemiSyncMaster:commitTrx` is called.
 
+Update: below was a mistake, until next "Update".
+
 If we are able to get a GTID from the parameter of `repl_semi_report_commit`
 (`Trans_param *param`), we will be able to push this information to `commitTrx`.
 More about this in the section [Trans_param](#trans_param)
@@ -62,6 +64,14 @@ Or if we want the GTID also for the legacy semi-sync (`WAIT_AFTER_SYNC`), we cou
 save the GTID in the `repl_semi_report_commit` function for usage in
 `repl_semi_report_binlog_sync`.
 
+Update: above was a mistake.  The `repl_semi_report_commit` observer is for 5.5
+semi-sync, and the lossless semi-sync of 5.7 uses the
+`repl_semi_report_binlog_sync` observer (I confused `WAIT_AFTER_COMMIT` and
+`WAIT_AFTER_SYNC`, probably hoping things would be simple and I would only have to
+reference `Trans_gtid_info` from `Trans_param` to fix this).  I realized this
+doing tests and need to pivot.
+
+...
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 ### Trans_param
@@ -75,15 +85,20 @@ It contains a `Trans_gtid_info`:
 `Trans_gtid_info` definition:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/replication.h#L121
 
-This definition is not super clear.  There is a sid, a sidno and a gno.
+This definition is not super clear.  There is a sid, a type, a sidno and a gno.
 
-`sid` (type `rpl_sid`) is the UUID:
+`sid` (type `rpl_sid`) is the UUID of the gtid:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L293
 
 `sid` means Source Id:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L99
 
-...
+`type` indicates ANONYMOUS, ...
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L3689
+
+`sidno` is nto fully understood
+
+`gno` is the numeric part of the gtid
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
