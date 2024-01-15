@@ -707,11 +707,19 @@ class ReplSemiSyncMaster : public ReplSemiSyncBase {
    * Input:  (the transaction events' ending binlog position)
    *  trx_wait_binlog_name - (IN)  ending position's file name
    *  trx_wait_binlog_pos  - (IN)  ending position's file offset
+   *  trx_gtid_info        - (IN)  gtid of this transaction, might be nullptr
    *
    * Return:
    *  0: success;  non-zero: error
+   *
+   * Note:
+   *  This is one of the few, maybe the only, place in the semisync_source code
+   *  where gtids appear.  Semi-sync was implemented in 5.5 and gtids in 5.6.
+   *  This was added on top of 8.2.0, and backported in 8.0, for logging the
+   *  gtid in case of timeout.
    */
-  int commitTrx(const char *trx_wait_binlog_name, my_off_t trx_wait_binlog_pos);
+  int commitTrx(const char *trx_wait_binlog_name, my_off_t trx_wait_binlog_pos,
+                const Trans_gtid_info *trx_gtid_info);
 
   /* Reserve space in the replication event packet header:
    *  . slave semi-sync off: 1 byte - (0)
