@@ -80,6 +80,11 @@ So we could use `current_thd` to get the GTID of the trx:
 
 But when testing this, `current_thd->variables.gtid_next` is `AUTOMATIC`, arg !
 
+Starting back on this.  The last tests were on using the thd to get the gtid, but
+these showed this was still `AUTOMATIC` not updated when `repl_semi_report_binlog_sync`
+is called.  This lead to digging how GTIDs are assigned, details in the section
+[GTID Assignment](#gtid-assignment).
+
 ...
 
 
@@ -109,6 +114,106 @@ This definition is not super clear.  There is a sid, a type, a sidno and a gno.
 `sidno` is nto fully understood
 
 `gno` is the numeric part of the gtid
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### GTID Assignment
+
+...below with full release binaries (full vs minimal)...
+
+
+```
+Thread 49 "connection" hit Breakpoint 1.1, repl_semi_report_binlog_sync () at ../../../mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc:98
+98      ../../../mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc: No such file or directory.
+(gdb) backtrace
+#0  repl_semi_report_binlog_sync () at ../../../mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc:98
+#1  0x0000000001de8d72 in Binlog_storage_delegate::after_sync () at ../../mysql-8.2.0/sql/rpl_handler.cc:1035
+#2  0x0000000001d6ab99 in call_after_sync_hook () at ../../mysql-8.2.0/sql/binlog.cc:8858
+#3  0x0000000001d86908 in MYSQL_BIN_LOG::ordered_commit () at ../../mysql-8.2.0/sql/binlog.cc:9137
+#4  0x0000000001d87f1a in MYSQL_BIN_LOG::commit () at ../../mysql-8.2.0/sql/binlog.cc:8394
+#5  0x0000000001106c56 in ha_commit_trans () at ../../mysql-8.2.0/sql/handler.cc:1794
+#6  0x0000000000fa51fb in trans_commit () at ../../mysql-8.2.0/sql/transaction.cc:246
+#7  0x0000000000e3136c in mysql_create_db () at ../../mysql-8.2.0/sql/sql_db.cc:504
+#8  0x0000000000e83520 in mysql_execute_command () at ../../mysql-8.2.0/sql/sql_parse.cc:3943
+#9  0x0000000000e84ed0 in dispatch_sql_command () at ../../mysql-8.2.0/sql/sql_parse.cc:5479
+#10 0x0000000000e87b05 in dispatch_command () at ../../mysql-8.2.0/sql/sql_parse.cc:2136
+#11 0x0000000000e886c7 in do_command () at ../../mysql-8.2.0/sql/sql_parse.cc:1465
+#12 0x0000000000fe4cb8 in handle_connection () at ../../mysql-8.2.0/sql/conn_handler/connection_handler_per_thread.cc:303
+#13 0x000000000282bfa5 in pfs_spawn_thread () at ../../../mysql-8.2.0/storage/perfschema/pfs.cc:3049
+#14 0x00007ffff72a8134 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#15 0x00007ffff73287dc in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+```
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+Interestinglky, `repl_semi_report_binlog_sync` "breaks" twice.  I first parked
+this, but I later correlated this with the release binaries not working super well
+with gdb.  I also got problem with the debug binaries that SIGSEGV in pluggin code
+(maybe because the .so was compiled in release, even though my confidence level on
+this is low).
+
+...below with debug binaries wo semi-sync loaded...
+
+```
+Thread 48 "connection" hit Breakpoint 2, call_after_sync_hook (queue_head=queue_head@entry=0x7fff30001050) at ../../mysql-8.2.0/sql/binlog.cc:8846
+8846    in ../../mysql-8.2.0/sql/binlog.cc
+(gdb) backtrace
+#0  call_after_sync_hook (queue_head=queue_head@entry=0x7fff30001050) at ../../mysql-8.2.0/sql/binlog.cc:8846
+#1  0x0000000003dcbc49 in MYSQL_BIN_LOG::ordered_commit (this=this@entry=0x6eb2040 <mysql_bin_log>, thd=0x7fff30001050, all=all@entry=true, skip_commit=skip_commit@entry=false) at ../../mysql-8.2.0/sql/binlog.cc:9137
+#2  0x0000000003dcd471 in MYSQL_BIN_LOG::commit (this=<optimized out>, thd=<optimized out>, all=<optimized out>) at ../../mysql-8.2.0/sql/binlog.cc:8394
+#3  0x0000000003465bdb in ha_commit_trans (thd=thd@entry=0x7fff30001050, all=all@entry=true, ignore_global_read_lock=ignore_global_read_lock@entry=false) at ../../mysql-8.2.0/sql/handler.cc:1794
+#4  0x00000000032ef0b4 in trans_commit (thd=thd@entry=0x7fff30001050, ignore_global_read_lock=ignore_global_read_lock@entry=false) at ../../mysql-8.2.0/sql/transaction.cc:246
+#5  0x00000000031795e4 in mysql_rm_db (thd=thd@entry=0x7fff30001050, db=..., if_exists=if_exists@entry=false) at ../../mysql-8.2.0/sql/sql_db.cc:859
+#6  0x00000000031cf5c6 in mysql_execute_command (thd=thd@entry=0x7fff30001050, first_level=first_level@entry=true) at ../../mysql-8.2.0/sql/sql_parse.cc:3954
+#7  0x00000000031d284f in dispatch_sql_command (thd=0x7fff30001050, parser_state=parser_state@entry=0x7fffe014acf0) at ../../mysql-8.2.0/sql/sql_parse.cc:5479
+#8  0x00000000031d3f63 in dispatch_command (thd=<optimized out>, thd@entry=0x7fff30001050, com_data=com_data@entry=0x7fffe014bb20, command=COM_QUERY) at ../../mysql-8.2.0/sql/sql_parse.cc:2136
+#9  0x00000000031d5c7b in do_command (thd=thd@entry=0x7fff30001050) at ../../mysql-8.2.0/sql/sql_parse.cc:1465
+#10 0x000000000333c9b6 in handle_connection (arg=arg@entry=0x9a918a0) at ../../mysql-8.2.0/sql/conn_handler/connection_handler_per_thread.cc:303
+#11 0x00000000048a7ae8 in pfs_spawn_thread (arg=0x9b4afe0) at ../../../mysql-8.2.0/storage/perfschema/pfs.cc:3049
+#12 0x00007ffff72a8134 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#13 0x00007ffff73287dc in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+```
+ 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+This is what I gathered from exploring above:
+- before calling `call_after_sync_hook`, `ordered_commit` calls `process_flush_stage_queue`,
+
+- `process_flush_stage_queue` calls `assign_automatic_gtids_to_flush_group,
+
+- `assign_automatic_gtids_to_flush_group` calls `generate_automatic_gtid`,
+
+- `generate_automatic_gtid` calls `acquire_ownership`,
+
+- `acquire_ownership` sets `thd->owned_gtid`.
+
+--> `thd->owned_gtid` is what should be used for logging.
+
+```
+Thread 48 "connection" hit Breakpoint 1, Gtid_state::acquire_ownership (this=this@entry=0x74ae110, thd=thd@entry=0x7fff30001050, gtid=...) at ../../mysql-8.2.0/sql/rpl_gtid_state.cc:77
+77      in ../../mysql-8.2.0/sql/rpl_gtid_state.cc
+(gdb) backtrace
+#0  Gtid_state::acquire_ownership (this=this@entry=0x74ae110, thd=thd@entry=0x7fff30001050, gtid=...) at ../../mysql-8.2.0/sql/rpl_gtid_state.cc:77
+#1  0x0000000003e1ecd7 in Gtid_state::generate_automatic_gtid (this=this@entry=0x74ae110, thd=thd@entry=0x7fff30001050, specified_sidno=<optimized out>, specified_gno=specified_gno@entry=0, locked_sidno=locked_sidno@entry=0x7fffe0147dbc)
+    at ../../mysql-8.2.0/sql/rpl_gtid_state.cc:525
+#2  0x0000000003dbce3e in MYSQL_BIN_LOG::assign_automatic_gtids_to_flush_group (this=this@entry=0x6eb2040 <mysql_bin_log>, first_seen=first_seen@entry=0x7fff30001050) at ../../mysql-8.2.0/sql/binlog.cc:1582
+#3  0x0000000003dcb17a in MYSQL_BIN_LOG::process_flush_stage_queue (this=this@entry=0x6eb2040 <mysql_bin_log>, total_bytes_var=total_bytes_var@entry=0x7fffe0147fa8, rotate_var=rotate_var@entry=0x7fffe0147fa7, out_queue_var=out_queue_var@entry=0x7fffe0147f98)
+    at ../../mysql-8.2.0/sql/binlog.cc:8549
+#4  0x0000000003dcb6d6 in MYSQL_BIN_LOG::ordered_commit (this=this@entry=0x6eb2040 <mysql_bin_log>, thd=0x7fff30001050, all=all@entry=true, skip_commit=skip_commit@entry=false) at ../../mysql-8.2.0/sql/binlog.cc:9008
+#5  0x0000000003dcd471 in MYSQL_BIN_LOG::commit (this=<optimized out>, thd=<optimized out>, all=<optimized out>) at ../../mysql-8.2.0/sql/binlog.cc:8394
+#6  0x0000000003465bdb in ha_commit_trans (thd=thd@entry=0x7fff30001050, all=all@entry=true, ignore_global_read_lock=ignore_global_read_lock@entry=false) at ../../mysql-8.2.0/sql/handler.cc:1794
+#7  0x00000000032ef0b4 in trans_commit (thd=thd@entry=0x7fff30001050, ignore_global_read_lock=ignore_global_read_lock@entry=false) at ../../mysql-8.2.0/sql/transaction.cc:246
+#8  0x0000000003178989 in mysql_create_db (thd=thd@entry=0x7fff30001050, db=db@entry=0x7fff3001c9c0 "test_jfg3", create_info=create_info@entry=0x7fffe014a1d0) at ../../mysql-8.2.0/sql/sql_db.cc:504
+#9  0x00000000031cf53d in mysql_execute_command (thd=thd@entry=0x7fff30001050, first_level=first_level@entry=true) at ../../mysql-8.2.0/sql/sql_parse.cc:3943
+#10 0x00000000031d284f in dispatch_sql_command (thd=0x7fff30001050, parser_state=parser_state@entry=0x7fffe014acf0) at ../../mysql-8.2.0/sql/sql_parse.cc:5479
+#11 0x00000000031d3f63 in dispatch_command (thd=<optimized out>, thd@entry=0x7fff30001050, com_data=com_data@entry=0x7fffe014bb20, command=COM_QUERY) at ../../mysql-8.2.0/sql/sql_parse.cc:2136
+#12 0x00000000031d5c7b in do_command (thd=thd@entry=0x7fff30001050) at ../../mysql-8.2.0/sql/sql_parse.cc:1465
+#13 0x000000000333c9b6 in handle_connection (arg=arg@entry=0x9a918a0) at ../../mysql-8.2.0/sql/conn_handler/connection_handler_per_thread.cc:303
+#14 0x00000000048a7ae8 in pfs_spawn_thread (arg=0x9b4afe0) at ../../../mysql-8.2.0/storage/perfschema/pfs.cc:3049
+#15 0x00007ffff72a8134 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#16 0x00007ffff73287dc in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+```
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+...
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->

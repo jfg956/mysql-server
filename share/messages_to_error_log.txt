@@ -12280,7 +12280,7 @@ ER_WARN_DEPRECATED_OR_BLOCKED_CIPHER
    eng "Value for option '%s' contains cipher '%s' that is either blocked or deprecated (and will be removed in a future release). Please refer to the documentation for more details."
 
 ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID
-  eng "Timeout waiting for reply of binlog (file: %s, pos: %lu, gtig: %s), semi-sync up to file %s, position %lu."
+  eng "Timeout waiting for reply of binlog (file: %s, pos: %lu, gtid: %s), semi-sync up to file %s, position %lu."
 
 #
 # End of 8.0 error messages intended to be written to the server error log.
