@@ -261,10 +261,12 @@ SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_N
 # Test case.
 dbdeployer deploy replication mysql_8.2.0 --gtid --semi-sync
 
+(
 ./node1/stop& ./node2/stop& wait
 ./m <<< "SET GLOBAL rpl_semi_sync_master_timeout = 1000"
 ./m <<< "CREATE DATABASE test_jfg"
 grep -e "Timeout waiting for reply of binlog" master/data/msandbox.err
+)
 
 # Little victory below.
 2024-02-14T19:21:23.445062Z 13 [Warning] [MY-014068] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000002, pos: 397, gtid: 00019201-1111-1111-1111-111111111111:36), semi-sync up to file , position 4.
@@ -287,6 +289,28 @@ stack_bottom = 7f5c3c5f6bf0 thread_stack 0x100000
 /home/jgagne/opt/mysql/mysql_8.2.0/bin/mysqld(Gtid::to_string(mysql::gtid::Uuid const&, char*) const+0x1e) [0x560e1774c3ce]
 /home/jgagne/opt/mysql/mysql_8.2.0/lib/plugin/semisync_master.so(+0x7990) [0x7f5c7582a990]
 [...]
+
+# After handling the ANONYMOUS case.
+2024-02-14T20:51:52.597375Z 13 [Warning] [MY-014068] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000003, pos: 357, gtid: ANONYMOUS), semi-sync up to file mysql-bin.000001, position 8328.
+
+# New test.
+2024-02-14T20:59:10.465301Z 16 [Warning] [MY-014068] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000001, pos: 8529, gtid: 00019201-1111-1111-1111-111111111111:34), semi-sync up to file , position 4.
+
+# And binlog content from above.
+/home/jgagne/opt/mysql/mysql_8.2.0/bin/mysqlbinlog master/data/mysql-bin.000001
+# at 8332
+#240214 20:59:09 server id 19201  end_log_pos 8409 CRC32 0x5fc2d7ab     GTID    last_committed=33       sequence_number=34      rbr_only=no     original_committed_timestamp=1707944349454817   immediate_commit_timestamp=1707944349454817     transaction_length=197
+# original_commit_timestamp=1707944349454817 (2024-02-14 20:59:09.454817 UTC)
+# immediate_commit_timestamp=1707944349454817 (2024-02-14 20:59:09.454817 UTC)
+/*!80001 SET @@session.original_commit_timestamp=1707944349454817*//*!*/;
+/*!80014 SET @@session.original_server_version=80200*//*!*/;
+/*!80014 SET @@session.immediate_server_version=80200*//*!*/;
+SET @@SESSION.GTID_NEXT= '00019201-1111-1111-1111-111111111111:34'/*!*/;
+# at 8409
+#240214 20:59:09 server id 19201  end_log_pos 8529 CRC32 0x913fe291     Query   thread_id=16    exec_time=0     error_code=0    Xid = 101
+SET TIMESTAMP=1707944349/*!*/;
+/*!80016 SET @@session.default_table_encryption=0*//*!*/;
+CREATE DATABASE test_jfg
 ```
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
