@@ -794,12 +794,14 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
                  reply_file_name_, (unsigned long)reply_file_pos_);
         } else {
-          const Gtid_specification *spec = &(current_thd->variables.gtid_next);
-          char gtid[spec->MAX_TEXT_LENGTH + 1];
-          gtid[spec->to_string(global_sid_map, gtid, true)] = '\0';
+          // Notes for later for avoiding this failing with GTID off.
+          // thd->owned_gtid.sidno == THD::OWNED_SIDNO_ANONYMOUS
+          const Gtid *gtid = &(current_thd->owned_gtid);
+          char str_gtid[gtid->MAX_TEXT_LENGTH + 1];
+          str_gtid[gtid->to_string(global_sid_map, str_gtid, true)] = '\0';
           LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
-                 gtid, reply_file_name_, (unsigned long)reply_file_pos_);
+                 str_gtid, reply_file_name_, (unsigned long)reply_file_pos_);
         }
         rpl_semi_sync_source_wait_timeouts++;
 

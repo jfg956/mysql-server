@@ -46,7 +46,7 @@ there is the registration of trans_observer, storage_observer and transmit_obser
 One of these observers is [`repl_semi_report_commit`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L109),
 in which `ReplSemiSyncMaster:commitTrx` is called.
 
-Update: below was a mistake, until next "Update".
+Update: below was a mistake, goto "Update" to skip.
 
 If we are able to get a GTID from the parameter of `repl_semi_report_commit`
 (`Trans_param *param`), we will be able to push this information to `commitTrx`.
@@ -72,18 +72,29 @@ reference `Trans_gtid_info` from `Trans_param` to fix this).  I realized this
 doing tests and need to pivot.
 
 When checking `enum_gtid_type`, I saw that once a trx is assigned a GTID, this
-is indicated in thd:
+is indicated in `thd->variables.gtid_next`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L3707
+
+Reference to `thd->variables`:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/sql_class.h#L1116
+
+Reference to `thd->variables.gtid_next`:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/system_variables.h#L355
 
 So we could use `current_thd` to get the GTID of the trx:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L591
 
 But when testing this, `current_thd->variables.gtid_next` is `AUTOMATIC`, arg !
 
-Starting back on this.  The last tests were on using the thd to get the gtid, but
-these showed this was still `AUTOMATIC` not updated when `repl_semi_report_binlog_sync`
-is called.  This lead to digging how GTIDs are assigned, details in the section
-[GTID Assignment](#gtid-assignment).
+Starting back on this after almost a month...
+
+The last tests were on using `thd->variables.gtid_next`to get the gtid, but
+these showed this was still `AUTOMATIC` / not updated when calling 
+`repl_semi_report_binlog_sync`.  This lead to digging how GTIDs are assigned,
+details in the section [GTID Assignment](#gtid-assignment).  The TL&DR is that
+at this point in the code, assignment has been done, but not in
+`current_thd->variables.gtid_next`, only temporarily in
+[`current_thd->owned_gtid`][owned_gtid].
 
 ...
 
@@ -119,8 +130,8 @@ This definition is not super clear.  There is a sid, a type, a sidno and a gno.
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 ### GTID Assignment
 
-...below with full release binaries (full vs minimal)...
-
+In full release binaries (full as opposed to minimal), ibelow is the stack trace
+when we get in the semi-sync code.
 
 ```
 Thread 49 "connection" hit Breakpoint 1.1, repl_semi_report_binlog_sync () at ../../../mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc:98
@@ -151,7 +162,8 @@ with gdb.  I also got problem with the debug binaries that SIGSEGV in pluggin co
 (maybe because the .so was compiled in release, even though my confidence level on
 this is low).
 
-...below with debug binaries wo semi-sync loaded...
+Because problems above, pivoting to debug binaries without semi-sync loaded with
+breaking before semi-sync is called (`call_after_sync_hook`).
 
 ```
 Thread 48 "connection" hit Breakpoint 2, call_after_sync_hook (queue_head=queue_head@entry=0x7fff30001050) at ../../mysql-8.2.0/sql/binlog.cc:8846
@@ -175,17 +187,26 @@ Thread 48 "connection" hit Breakpoint 2, call_after_sync_hook (queue_head=queue_
  
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 This is what I gathered from exploring above:
-- before calling `call_after_sync_hook`, `ordered_commit` calls `process_flush_stage_queue`,
+- before calling [`call_after_sync_hook`][call_after_sync_hook], `ordered_commit` calls [`process_flush_stage_queue`][process_flush_stage_queue],
 
-- `process_flush_stage_queue` calls `assign_automatic_gtids_to_flush_group,
+- [`process_flush_stage_queue`][process_flush_stage_queue] calls [`assign_automatic_gtids_to_flush_group`][assign_automatic_gtids_to_flush_group],
 
-- `assign_automatic_gtids_to_flush_group` calls `generate_automatic_gtid`,
+- [`assign_automatic_gtids_to_flush_group`][assign_automatic_gtids_to_flush_group] calls `generate_automatic_gtid`,
 
-- `generate_automatic_gtid` calls `acquire_ownership`,
+- `generate_automatic_gtid` calls [`acquire_ownership`][acquire_ownership],
 
-- `acquire_ownership` sets `thd->owned_gtid`.
+- [`acquire_ownership`][acquire_ownership] sets [`thd->owned_gtid`][owned_gtid].
 
---> `thd->owned_gtid` is what should be used for logging.
+--> [`thd->owned_gtid`][owned_gtid] is what should be used for logging.
+
+[call_after_sync_hook]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L9137
+[process_flush_stage_queue]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L9009
+[assign_automatic_gtids_to_flush_group]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L8549
+
+[acquire_ownership]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid_state.cc#L77
+[owned_gtid]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/sql_class.h#L3723
+
+Below is the code-path for reaching `acquire_ownership`.
 
 ```
 Thread 48 "connection" hit Breakpoint 1, Gtid_state::acquire_ownership (this=this@entry=0x74ae110, thd=thd@entry=0x7fff30001050, gtid=...) at ../../mysql-8.2.0/sql/rpl_gtid_state.cc:77
@@ -212,9 +233,6 @@ Thread 48 "connection" hit Breakpoint 1, Gtid_state::acquire_ownership (this=thi
 #16 0x00007ffff73287dc in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
 ```
 
-<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
-...
-
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 ### Other Notes
@@ -239,6 +257,37 @@ un-grep-able:
 SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE '%semi%';
 ```
 
+```
+# Test case.
+dbdeployer deploy replication mysql_8.2.0 --gtid --semi-sync
+
+./node1/stop& ./node2/stop& wait
+./m <<< "SET GLOBAL rpl_semi_sync_master_timeout = 1000"
+./m <<< "CREATE DATABASE test_jfg"
+grep -e "Timeout waiting for reply of binlog" master/data/msandbox.err
+
+# Little victory below.
+2024-02-14T19:21:23.445062Z 13 [Warning] [MY-014068] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000002, pos: 397, gtid: 00019201-1111-1111-1111-111111111111:36), semi-sync up to file , position 4.
+
+# Above was short lived...
+# wo gitd (dbdeployer deploy replication mysql_8.2.0 --semi-sync):
+2024-02-14T19:24:28Z UTC - mysqld got signal 11 ;
+Most likely, you have hit a bug, but this error can also be caused by malfunctioning hardware.
+BuildID[sha1]=6976d9052513e7097409f4aeaff885724e535403
+Thread pointer: 0x7f5bd8000b70
+Attempting backtrace. You can use the following information to find out
+where mysqld died. If you see no messages after this, something went
+terribly wrong...
+stack_bottom = 7f5c3c5f6bf0 thread_stack 0x100000
+/home/jgagne/opt/mysql/mysql_8.2.0/bin/mysqld(my_print_stacktrace(unsigned char const*, unsigned long)+0x3d) [0x560e17ad6c7d]
+/home/jgagne/opt/mysql/mysql_8.2.0/bin/mysqld(print_fatal_signal(int)+0x2a2) [0x560e169ba312]
+/home/jgagne/opt/mysql/mysql_8.2.0/bin/mysqld(handle_fatal_signal+0x95) [0x560e169ba4b5]
+/lib/x86_64-linux-gnu/libc.so.6(+0x3c050) [0x7f5c8405b050]
+/home/jgagne/opt/mysql/mysql_8.2.0/bin/mysqld(mysql::gtid::Uuid::to_string(unsigned char const*, char*)+0x38) [0x560e184cd9f8]
+/home/jgagne/opt/mysql/mysql_8.2.0/bin/mysqld(Gtid::to_string(mysql::gtid::Uuid const&, char*) const+0x1e) [0x560e1774c3ce]
+/home/jgagne/opt/mysql/mysql_8.2.0/lib/plugin/semisync_master.so(+0x7990) [0x7f5c7582a990]
+[...]
+```
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 <!-- EOF -->
