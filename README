@@ -1,3 +1,17 @@
+--- Begin of branch notes.
+
+This is a branch of https://github.com/jfg956/mysql-server.
+
+The branch link is https://github.com/jfg956/mysql-server/tree/bug91737.
+
+This branch is for fixing https://bugs.mysql.com/bug.php?id=91737.
+
+More about this work in https://github.com/jfg956/mysql-server/blob/bug91737/jfg_brain_dump.md.
+
+Fake PR for this branch: TBC.
+
+--- End of branch notes.
+
 Copyright (c) 2000, 2024, Oracle and/or its affiliates.
 
 This is a release of MySQL, an SQL database server.
