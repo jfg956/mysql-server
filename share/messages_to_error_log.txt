@@ -12288,6 +12288,9 @@ ER_GRP_RPL_MEMBER_INFO_DOES_NOT_EXIST
 ER_USAGE_DEPRECATION_COUNTER
   eng "Deprecated '%s' used %s times, last time used '%s'."
 
+ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID
+  eng "Timeout waiting for reply of binlog (file: %s, pos: %lu, gtid: %s), semi-sync up to file %s, position %lu."
+
 #
 # End of 8.0 error messages intended to be written to the server error log.
 #

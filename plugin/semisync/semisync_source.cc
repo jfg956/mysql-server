@@ -29,11 +29,11 @@
 #include "my_byteorder.h"
 #include "my_compiler.h"
 #include "my_systime.h"
-#include "sql/mysqld.h"  // max_connections
-#if defined(ENABLED_DEBUG_SYNC)
 #include "sql/current_thd.h"
-#include "sql/debug_sync.h"
+#include "sql/mysqld.h"  // max_connections
 #include "sql/sql_class.h"
+#if defined(ENABLED_DEBUG_SYNC)
+#include "sql/debug_sync.h"
 #endif
 
 #define TIME_THOUSAND 1000
@@ -789,9 +789,28 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
 
       if (wait_result != 0) {
         /* This is a real wait timeout. */
-        LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT,
-               trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
-               reply_file_name_, (unsigned long)reply_file_pos_);
+        if (0) {
+          LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT,
+                 trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
+                 reply_file_name_, (unsigned long)reply_file_pos_);
+        } else {
+          const Gtid *gtid = &(current_thd->owned_gtid);
+
+          //  Gtid::to_string does not handle ANONYMOUS, so extra work is needed.
+          Gtid_specification spec;
+          if (gtid->sidno == THD::OWNED_SIDNO_ANONYMOUS) {
+            spec.set_anonymous();
+          } else {
+            spec.set(*gtid);
+          }
+
+          char str_gtid[spec.MAX_TEXT_LENGTH + 1];
+          str_gtid[spec.to_string(global_sid_map, str_gtid, true)] = '\0';
+
+          LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
+                 trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
+                 str_gtid, reply_file_name_, (unsigned long)reply_file_pos_);
+        }
         rpl_semi_sync_source_wait_timeouts++;
 
         /* switch semi-sync off */
