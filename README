@@ -2,11 +2,9 @@
 
 This is a branch of https://github.com/jfg956/mysql-server.
 
-The branch link is https://github.com/jfg956/mysql-server/tree/bug91737.
+The branch link is https://github.com/jfg956/mysql-server/tree/mysql-8.3.0_bug91737.
 
-This branch is for fixing https://bugs.mysql.com/bug.php?id=91737.
-
-More about this work in https://github.com/jfg956/mysql-server/blob/bug91737/jfg_brain_dump.md.
+More about this work in https://github.com/jfg956/mysql-server/blob/mysql-8.3.0_bug91737/jfg_brain_dump.md.
 
 Fake PR for this branch: TBC.
 
