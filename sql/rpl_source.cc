@@ -1273,7 +1273,6 @@ end:
   */
   if (!ret)
     (void)RUN_HOOK(binlog_transmit, after_reset_master, (thd, 0 /* flags */));
-
   return ret;
 }
 
