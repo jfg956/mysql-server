@@ -1,12 +1,10 @@
 --- Begin of branch notes.
 
-This is a branch of https://github.com/jfg956/mysql-server.
-
-The branch link is https://github.com/jfg956/mysql-server/tree/mysql-8.3.0_bug91737.
-
 More about this work in https://github.com/jfg956/mysql-server/blob/mysql-8.3.0_bug91737/jfg_brain_dump.md.
 
 Fake PR for this branch: https://github.com/jfg956/mysql-server/pull/4
+
+Matching fake contrib PR: https://github.com/jfg956/mysql-server/pull/5
 
 --- End of branch notes.
 
