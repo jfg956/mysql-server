@@ -4,9 +4,9 @@
 We would like to fix [Bug#91737](https://bugs.mysql.com/bug.php?id=91737):
 Please log GTID_EXECUTED when running RESET MASTER.
 
-...
+### Exlploration from Bug Report:
 
-When doing:
+From the bug report, when doing:
 - `RESET MASTER;`
 - `SET GLOBAL GTID_PURGED = "+00016745-1111-1111-1111-111111111111:1-20";`
 
@@ -24,9 +24,8 @@ I get below in the logs.
 ER_GTID_PURGED_WAS_UPDATED and ER_GTID_EXECUTED_WAS_UPDATED in:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/sys_vars.cc#L6547
 
-...
-
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### Finding where to add logs in RESET MASTER:
 
 I ended-up spellunking in the parser:
 - RESET is handled here: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/sql_yacc.yy#L14451
@@ -50,17 +49,27 @@ Back at `REFRESH_SOURCE`, this ends-up calling `reset_binary_logs_and_gtids` her
 
 So the important function is `reset_binary_logs_and_gtids`: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_source.cc#L1199
 
-...
+Not super important in the context of this change, but interesting to note,
+the important bits of `reset_binary_logs_and_gtids` are:
+- `MYSQL_BIN_LOG::reset_logs`: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/binlog.cc#L5634
+- `Gtid_state::clear`: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_gtid_state.cc#L57
 
-`MYSQL_BIN_LOG::reset_logs`: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/binlog.cc#L5634
+The code for this operation changes from 8.0.36 to 8.3.0:
+- `reset_master` in 8.0.36: https://github.com/jfg956/mysql-server/blob/mysql-8.0.36/sql/rpl_source.cc#L1195
+- `reset_binary_logs_and_gtids` in 8.3.0: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_source.cc#L1199
 
-`Gtid_state::clear`: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_gtid_state.cc#L57
+This is because `RESET MASTER` is part of the "offending" language Oracle is
+getting rid of, and this was not yet done in 8.0.36.
 
-...
+At 1st, I thought of making this change in such a way that it would be possible
+to easily back-port in 8.0 with keeping the backward compatible behavior with
+a global variables, but I am giving-up on this.
+
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### Testing:
 
-Trying to find a test to update, but finding none:
+Trying to find a test to get inspiration from (`GTID_PURGED`), but finding none:
 
 ```
 $ grep -r -e 010916 -e 010917 -e GLOBAL.GTID_PURGED.was.changed -e GLOBAL.GTID_EXECUTED.was.changed . | grep test
@@ -106,31 +115,42 @@ $ grep -r -e 010916 -e 010917 -e was.changed . | grep test | grep -v -e "^./jfg_
 $
 ```
 
-...
-
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Manually testing:
 
 ```
-mysql [localhost:8300] {msandbox} ((none)) > flush status;
-Query OK, 0 rows affected (0.00 sec)
+mysql [localhost:8300] {msandbox} ((none)) > show global variables like "gtid_mode"; flush status; flush status; show binary log status\G RESET BINARY LOGS AND GTIDS; show binary log status\G
++---------------+-------+
+| Variable_name | Value |
++---------------+-------+
+| gtid_mode     | ON    |
++---------------+-------+
+1 row in set (0.01 sec)
 
-mysql [localhost:8300] {msandbox} ((none)) > flush status;
-Query OK, 0 rows affected (0.00 sec)
+Query OK, 0 rows affected (0.01 sec)
 
-mysql [localhost:8300] {msandbox} ((none)) > show binary log status\G RESET BINARY LOGS AND GTIDS;
+Query OK, 0 rows affected (0.01 sec)
+
 *************************** 1. row ***************************
-             File: mysql-bin.000002
-         Position: 623
-     Binlog_Do_DB:
- Binlog_Ignore_DB:
-Executed_Gtid_Set: 00008300-0000-0000-0000-000000008300:1-3
+             File: binlog.000001
+         Position: 468
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 00008300-0000-0000-0000-000000008300:1-2
 1 row in set (0.00 sec)
 
-Query OK, 0 rows affected (0.02 sec)
+Query OK, 0 rows affected (0.10 sec)
 
-2024-02-27T20:48:05.512802Z 8 [System] [MY-010917] [Repl] @@GLOBAL.GTID_EXECUTED was changed from '00008300-0000-0000-0000-000000008300:1-3' to ''.
+*************************** 1. row ***************************
+             File: binlog.000001
+         Position: 158
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 
+1 row in set (0.00 sec)
+
+2024-03-25T18:09:10.077668Z 8 [System] [MY-010917] [Repl] @@GLOBAL.GTID_EXECUTED was changed from '00008300-0000-0000-0000-000000008300:1-2' to ''.
 ```
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -138,7 +158,46 @@ Query OK, 0 rows affected (0.02 sec)
 I also tested with GTID disabled:
 
 ```
-mysql [localhost:8300] {msandbox} ((none)) > show global variables like "gtid_mode";
+mysql [localhost:8300] {msandbox} ((none)) > show global variables like "gtid_mode"; flush status; flush status; show binary log status\G RESET BINARY LOGS AND GTIDS; show binary log status\G
++---------------+-------+
+| Variable_name | Value |
++---------------+-------+
+| gtid_mode     | OFF   |
++---------------+-------+
+1 row in set (0.01 sec)
+
+Query OK, 0 rows affected (0.01 sec)
+
+Query OK, 0 rows affected (0.12 sec)
+
+*************************** 1. row ***************************
+             File: binlog.000001
+         Position: 468
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.07 sec)
+
+*************************** 1. row ***************************
+             File: binlog.000001
+         Position: 158
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 
+1 row in set (0.01 sec)
+
+2024-03-25T18:10:59.012374Z 8 [System] [MY-010917] [Repl] @@GLOBAL.GTID_EXECUTED was changed from '' to ''.
+```
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+It looks weird to have a GTID_EXECUTED line in the logs when gtid is disabled, 
+but as it is allowed to set GTID_PURGED with gtid_mode = OFF, I guess it is ok.
+
+```
+mysql [localhost:8300] {msandbox} ((none)) > show global variables like "gtid_mode"; show binary log status\G set global gtid_purged="+00008300-0000-0000-0000-000000008301:1-3"; show binary log status\G
 +---------------+-------+
 | Variable_name | Value |
 +---------------+-------+
@@ -146,58 +205,50 @@ mysql [localhost:8300] {msandbox} ((none)) > show global variables like "gtid_mo
 +---------------+-------+
 1 row in set (0.00 sec)
 
-mysql [localhost:8300] {msandbox} ((none)) > flush status; flush status; flush status;
-
-Query OK, 0 rows affected (0.02 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-
-mysql [localhost:8300] {msandbox} ((none)) > show binary log status\G RESET BINARY LOGS AND GTIDS;
-*************************** 1. row ***************************
-             File: binlog.000002
-         Position: 623
-     Binlog_Do_DB:
- Binlog_Ignore_DB:
-Executed_Gtid_Set:
-1 row in set (0.00 sec)
-
-Query OK, 0 rows affected (0.05 sec)
-
-2024-02-27T20:58:59.724804Z 8 [System] [MY-010917] [Repl] @@GLOBAL.GTID_EXECUTED was changed from '' to ''.
-```
-
-<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
-
-It looks weird to have a GTID_EXECUTED line in the logs when gtid is disabled, 
-but it is allowed to set GTID_PURGED with gtid_mode = OFF, so I guess it is ok.
-
-```
-mysql [localhost:8300] {msandbox} ((none)) > set global gtid_purged="+00008300-0000-0000-0000-000000008301:1-3";
-Query OK, 0 rows affected (0.01 sec)
-
-2024-02-27T20:59:32.067159Z 8 [System] [MY-010916] [Server] @@GLOBAL.GTID_PURGED was changed from '' to '00008300-0000-0000-0000-000000008301:1-3'.
-2024-02-27T20:59:32.067261Z 8 [System] [MY-010917] [Server] @@GLOBAL.GTID_EXECUTED was changed from '' to '00008300-0000-0000-0000-000000008301:1-3'.
-
-mysql [localhost:8300] {msandbox} ((none)) > flush status; flush status; flush status;
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-
-mysql [localhost:8300] {msandbox} ((none)) > show binary log status\G RESET BINARY LOGS AND GTIDS;
 *************************** 1. row ***************************
              File: binlog.000001
-         Position: 623
-     Binlog_Do_DB:
- Binlog_Ignore_DB:
+         Position: 158
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.01 sec)
+
+*************************** 1. row ***************************
+             File: binlog.000001
+         Position: 158
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
 Executed_Gtid_Set: 00008300-0000-0000-0000-000000008301:1-3
 1 row in set (0.00 sec)
 
-Query OK, 0 rows affected (0.07 sec)
+2024-03-25T18:12:47.242547Z 8 [System] [MY-010916] [Server] @@GLOBAL.GTID_PURGED was changed from '' to '00008300-0000-0000-0000-000000008301:1-3'.
+2024-03-25T18:12:47.242620Z 8 [System] [MY-010917] [Server] @@GLOBAL.GTID_EXECUTED was changed from '' to '00008300-0000-0000-0000-000000008301:1-3'.
 
-2024-02-27T20:59:49.042501Z 8 [System] [MY-010917] [Repl] @@GLOBAL.GTID_EXECUTED was changed from '00008300-0000-0000-0000-000000008301:1-3' to ''.
+mysql [localhost:8300] {msandbox} ((none)) > flush status; flush status; show binary log status\G RESET BINARY LOGS AND GTIDS; show binary log status\G
+Query OK, 0 rows affected (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+*************************** 1. row ***************************
+             File: binlog.000001
+         Position: 468
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 00008300-0000-0000-0000-000000008301:1-3
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.02 sec)
+
+*************************** 1. row ***************************
+             File: binlog.000001
+         Position: 158
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 
+1 row in set (0.00 sec)
+
+2024-03-25T18:13:39.124002Z 8 [System] [MY-010917] [Repl] @@GLOBAL.GTID_EXECUTED was changed from '00008300-0000-0000-0000-000000008301:1-3' to ''.
 ```
-...
+
