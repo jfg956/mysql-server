@@ -86,7 +86,7 @@ So we could use `current_thd` to get the GTID of the trx:
 
 But when testing this, `current_thd->variables.gtid_next` is `AUTOMATIC`, arg !
 
-Starting back on this after almost a month...
+2024-02-14: Starting back on this after almost a month...
 
 The last tests were on using `thd->variables.gtid_next`to get the gtid, but
 these showed this was still `AUTOMATIC` / not updated when calling 
@@ -95,6 +95,14 @@ details in the section [GTID Assignment](#gtid-assignment).  The TL&DR is that
 at this point in the code, assignment has been done, but not in
 `current_thd->variables.gtid_next`, only temporarily in
 [`current_thd->owned_gtid`][owned_gtid].
+
+2024-04-09: Starting back on this after two months...
+
+Previous work was in 8.2, but 8.3 released on 2024-01-16, so should pivot.
+
+But dbdeployer not working well with gtids in 8.3.0, so new hurdle.  This is solved
+with plying with dbdeployer options, see tests below.
+
 
 ...
 
@@ -130,7 +138,7 @@ This definition is not super clear.  There is a sid, a type, a sidno and a gno.
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 ### GTID Assignment
 
-In full release binaries (full as opposed to minimal), ibelow is the stack trace
+In full release binaries (full as opposed to minimal), below is the stack trace
 when we get in the semi-sync code.
 
 ```
@@ -258,7 +266,7 @@ SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_N
 ```
 
 ```
-# Test case.
+# Test case with 8.2.0 (see below for 8.3.0).
 dbdeployer deploy replication mysql_8.2.0 --gtid --semi-sync
 
 (
@@ -311,6 +319,14 @@ SET @@SESSION.GTID_NEXT= '00019201-1111-1111-1111-111111111111:34'/*!*/;
 SET TIMESTAMP=1707944349/*!*/;
 /*!80016 SET @@session.default_table_encryption=0*//*!*/;
 CREATE DATABASE test_jfg
+```
+
+```
+# Test case with 8.3.0.
+gtid='-c "gtid_mode=ON" -c "enforce-gtid-consistency" -c "relay-log-recovery=on"'
+dbdeployer deploy replication mysql_8.3.0 $gtid --semi-sync
+
+...
 ```
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
