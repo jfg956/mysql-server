@@ -101,8 +101,40 @@ at this point in the code, assignment has been done, but not in
 Previous work was in 8.2, but 8.3 released on 2024-01-16, so should pivot.
 
 But dbdeployer not working well with gtids in 8.3.0, so new hurdle.  This is solved
-with plying with dbdeployer options, see tests below.
+with playing with dbdeployer options, see tests below.
 
+Arg: global_sid_map was removed in 8.3.0, it is now global_tsid_map.
+- 8.2.0: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L902
+- 8.3.0: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_gtid.h#L924
+
+Impact is not too big, just s/global_sid_map/global_tsid_map/.
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### GTID to_string
+
+A little complicated, not fully remembering how I gathered this...
+- Gtid: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L1136
+- Gtid_specification: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L3866
+
+Example in 8.2.0:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_rli_pdb.cc#L1543
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/sys_vars.h#L2443
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/sql_db.cc#L916
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid_execution.cc#L503
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/item_gtid_func.cc#L110
+
+From 8.2.0 to 8.3.0, global_sid_map became global_tsid_map:
+- https://github.com/jfg956/mysql-server/commit/b6776e970248445d78da62e11b7dffd0a7e79668
+
+Above in 8.3.0:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_rli_pdb.cc#L1553
+- https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/sys_vars.h#L2443
+- https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/sql_db.cc#L916
+- https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_gtid_execution.cc#L529
+- https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/item_gtid_func.cc#L110
 
 ...
 
@@ -323,8 +355,33 @@ CREATE DATABASE test_jfg
 
 ```
 # Test case with 8.3.0.
-gtid='-c "gtid_mode=ON" -c "enforce-gtid-consistency" -c "relay-log-recovery=on"'
+gtid='-c gtid_mode=ON -c enforce-gtid-consistency -c relay-log-recovery=on'
 dbdeployer deploy replication mysql_8.3.0 $gtid --semi-sync
+
+# in lib/plugin.
+cp ~/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/build_default/plugin_output_directory/semisync_master.so ./semisync_master.so_bug113598
+ls -l semisync_master.so*
+rm -f semisync_master.so; ln -s semisync_master.so_bug113598 semisync_master.so; ls -l semisync_master.so*
+
+# With only above, MySQL does not start, so we also need mysqld.
+# in bin.
+cp ~/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/build_default/bin/mysqld ./mysqld_bug113598
+ls -l mysqld*
+rm -f mysqld; ln -s mysqld_bug113598 mysqld; ls -l mysqld*
+
+(
+./m <<< "DROP DATABASE IF EXISTS test_jfg"
+./node1/stop& ./node2/stop& wait
+./m <<< "SET GLOBAL rpl_semi_sync_master_timeout = 1000"
+./m <<< "CREATE DATABASE test_jfg"
+grep -e "Timeout waiting for reply of binlog" master/data/msandbox.err | tail -n 1
+)
+
+./node1/start& ./node2/start& wait
+
+# Org:
+2024-04-10T18:18:04.070367Z 16 [Warning] [MY-011153] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000001, pos: 8525), semi-sync up to file mysql-bin.000001, position 8328.
+
 
 ...
 ```

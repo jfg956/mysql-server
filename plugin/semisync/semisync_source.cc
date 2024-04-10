@@ -805,7 +805,7 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
           }
 
           char str_gtid[spec.MAX_TEXT_LENGTH + 1];
-          str_gtid[spec.to_string(global_sid_map, str_gtid, true)] = '\0';
+          str_gtid[spec.to_string(global_tsid_map, str_gtid, true)] = '\0';
 
           LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
                  trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
