@@ -12288,6 +12288,8 @@ ER_GRP_RPL_MEMBER_INFO_DOES_NOT_EXIST
 ER_USAGE_DEPRECATION_COUNTER
   eng "Deprecated '%s' used %s times, last time used '%s'."
 
+# Even thought this is a 8.3.0 patch, this is put in the 8.0 section to allow back-porting.
+# If no back-porting is done, this could be moved to the 8.1+ section. 
 ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID
   eng "Timeout waiting for reply of binlog (file: %s, pos: %lu, gtid: %s), semi-sync up to file %s, position %lu."
 

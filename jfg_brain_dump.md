@@ -112,6 +112,99 @@ Impact is not too big, just s/global_sid_map/global_tsid_map/.
 ...
 
 
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### Tests
+
+```
+# Test case with 8.3.0.
+
+export mysql_v=8.3.0
+export gtid='-c gtid_mode=ON -c enforce-gtid-consistency -c relay-log-recovery=on'
+
+(
+
+export bin_dir="$HOME/opt/mysql/mysql_$mysql_v"
+build_dir="$HOME/src/github/https/jfg956/mysql-server/worktrees/mysql-${mysql_v}_bug113598/build/default"
+sb_dir="$HOME/sandboxes/rsandbox_mysql_${mysql_v//./_}"
+
+f=$bin_dir/bin/mysqld
+test -e ${f}_org || mv ${f}{,_org}
+cp $build_dir/bin/mysqld ${f}_bug113598
+
+f=$bin_dir/lib/plugin/semisync_master.so
+test -e ${f}_org || mv ${f}{,_org}
+cp $build_dir/plugin_output_directory/semisync_master.so ${f}_bug113598
+
+function set_v() {
+  ( cd $bin_dir/bin; rm -f mysqld; ln -s mysqld_$1 mysqld; )
+  ( cd $bin_dir/lib/plugin; rm -f semisync_master.so; ln -s semisync_master.so_$1 semisync_master.so; )
+}
+
+function create_sb() {
+  cd
+  rm -rf $sb_dir
+  set_v org
+  dbdeployer deploy replication mysql_$mysql_v $1 --semi-sync > /dev/null
+  cd $sb_dir; ./stop_all > /dev/null
+}
+
+create_sb "$gtid"
+
+function run_test() {
+  ./start_all > /dev/null
+  ./m <<< "DROP DATABASE IF EXISTS test_jfg"
+  ( ./node1/stop > /dev/null& ./node2/stop >/dev/null& wait; )
+  ./m <<< "SET GLOBAL rpl_semi_sync_master_timeout = 1000"
+  local sql="SELECT now(), @@GLOBAL.gtid_executed"
+  ./m -N <<< "$sql; CREATE DATABASE test_jfg; $sql"
+  sleep 1; grep -e "Timeout waiting for reply of binlog" master/data/msandbox.err | tail -n 1
+  ./stop_all > /dev/null
+}
+
+echo; echo "# org with GTID:"
+run_test
+
+echo; echo "# bug113598 with GTID:"
+set_v bug113598
+run_test
+
+create_sb
+
+echo; echo "# org without GTID:"
+run_test
+
+echo; echo "# bug113598 without GTID:"
+set_v bug113598
+run_test
+
+set_v org
+rm -rf $sb_dir
+
+)
+
+# org with GTID:
+2024-04-11 19:50:32     00019301-1111-1111-1111-111111111111:1-34
+2024-04-11 19:50:33     00019301-1111-1111-1111-111111111111:1-35
+2024-04-11T19:50:33.622931Z 12 [Warning] [MY-011153] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000002, pos: 589), semi-sync up to file mysql-bin.000002, position 392.
+
+# bug113598 with GTID:
+2024-04-11 19:50:56     00019301-1111-1111-1111-111111111111:1-36
+2024-04-11 19:50:57     00019301-1111-1111-1111-111111111111:1-37
+2024-04-11T19:50:57.929998Z 12 [Warning] [MY-014071] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000003, pos: 598, gtid: 00019301-1111-1111-1111-111111111111:37), semi-sync up to file mysql-bin.000003, position 401.
+
+# org without GTID:
+2024-04-11 19:52:45
+2024-04-11 19:52:46
+2024-04-11T19:52:46.718553Z 12 [Warning] [MY-011153] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000002, pos: 549), semi-sync up to file mysql-bin.000002, position 352.
+
+# bug113598 without GTID:
+2024-04-11 19:53:08
+2024-04-11 19:53:10
+2024-04-11T19:53:10.021778Z 12 [Warning] [MY-014071] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000003, pos: 558, gtid: ANONYMOUS), semi-sync up to file mysql-bin.000003, position 361.
+```
+
+
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 ### GTID to_string
 
@@ -298,7 +391,7 @@ SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_N
 ```
 
 ```
-# Test case with 8.2.0 (see below for 8.3.0).
+# Old tests with 8.2.0.
 dbdeployer deploy replication mysql_8.2.0 --gtid --semi-sync
 
 (
@@ -353,38 +446,6 @@ SET TIMESTAMP=1707944349/*!*/;
 CREATE DATABASE test_jfg
 ```
 
-```
-# Test case with 8.3.0.
-gtid='-c gtid_mode=ON -c enforce-gtid-consistency -c relay-log-recovery=on'
-dbdeployer deploy replication mysql_8.3.0 $gtid --semi-sync
-
-# in lib/plugin.
-cp ~/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/build_default/plugin_output_directory/semisync_master.so ./semisync_master.so_bug113598
-ls -l semisync_master.so*
-rm -f semisync_master.so; ln -s semisync_master.so_bug113598 semisync_master.so; ls -l semisync_master.so*
-
-# With only above, MySQL does not start, so we also need mysqld.
-# in bin.
-cp ~/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/build_default/bin/mysqld ./mysqld_bug113598
-ls -l mysqld*
-rm -f mysqld; ln -s mysqld_bug113598 mysqld; ls -l mysqld*
-
-(
-./m <<< "DROP DATABASE IF EXISTS test_jfg"
-./node1/stop& ./node2/stop& wait
-./m <<< "SET GLOBAL rpl_semi_sync_master_timeout = 1000"
-./m <<< "CREATE DATABASE test_jfg"
-grep -e "Timeout waiting for reply of binlog" master/data/msandbox.err | tail -n 1
-)
-
-./node1/start& ./node2/start& wait
-
-# Org:
-2024-04-10T18:18:04.070367Z 16 [Warning] [MY-011153] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000001, pos: 8525), semi-sync up to file mysql-bin.000001, position 8328.
-
-
-...
-```
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 <!-- EOF -->
