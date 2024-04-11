@@ -117,8 +117,6 @@ Impact is not too big, just s/global_sid_map/global_tsid_map/.
 ### Tests
 
 ```
-# Test case with 8.3.0.
-
 export mysql_v=8.3.0
 export gtid='-c gtid_mode=ON -c enforce-gtid-consistency -c relay-log-recovery=on'
 
@@ -142,9 +140,7 @@ function set_v() {
 }
 
 function create_sb() {
-  cd
-  rm -rf $sb_dir
-  set_v org
+  cd; rm -rf $sb_dir; set_v org
   dbdeployer deploy replication mysql_$mysql_v $1 --semi-sync > /dev/null
   cd $sb_dir; ./stop_all > /dev/null
 }
@@ -162,24 +158,15 @@ function run_test() {
   ./stop_all > /dev/null
 }
 
-echo; echo "# org with GTID:"
-run_test
-
-echo; echo "# bug113598 with GTID:"
-set_v bug113598
-run_test
+set_v org;       echo; echo "# org with GTID:";       run_test
+set_v bug113598; echo; echo "# bug113598 with GTID:"; run_test
 
 create_sb
 
-echo; echo "# org without GTID:"
-run_test
+set_v org;       echo; echo "# org without GTID:";       run_test
+set_v bug113598; echo; echo "# bug113598 without GTID:"; run_test
 
-echo; echo "# bug113598 without GTID:"
-set_v bug113598
-run_test
-
-set_v org
-rm -rf $sb_dir
+set_v org; rm -rf $sb_dir
 
 )
 
