@@ -109,8 +109,16 @@ Arg: global_sid_map was removed in 8.3.0, it is now global_tsid_map.
 
 Impact is not too big, just s/global_sid_map/global_tsid_map/.
 
-...
+On 2024-04-11, all tests were working, I was ready to contrib.
 
+But on 2024-04-12, I tested with AFTER_COMMIT, and crash !
+
+I might need [Trans_param](#trans_param) after all...
+
+OR get inspiration from how Trans_param is set:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_handler.cc#L811
+
+...
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -121,7 +129,6 @@ export mysql_v=8.3.0
 export gtid='-c gtid_mode=ON -c enforce-gtid-consistency -c relay-log-recovery=on'
 
 (
-
 export bin_dir="$HOME/opt/mysql/mysql_$mysql_v"
 build_dir="$HOME/src/github/https/jfg956/mysql-server/worktrees/mysql-${mysql_v}_bug113598/build/default"
 sb_dir="$HOME/sandboxes/rsandbox_mysql_${mysql_v//./_}"
@@ -145,50 +152,45 @@ function create_sb() {
   cd $sb_dir; ./stop_all > /dev/null
 }
 
-create_sb "$gtid"
-
 function run_test() {
   ./start_all > /dev/null
-  ./m <<< "DROP DATABASE IF EXISTS test_jfg"
+  ( s="SET GLOBAL rpl_semi_sync_master_"; ./m <<< "DROP DATABASE IF EXISTS test_jfg; ${s}timeout=1000; ${s}wait_point=$1"; )
   ( ./node1/stop > /dev/null& ./node2/stop >/dev/null& wait; )
-  ./m <<< "SET GLOBAL rpl_semi_sync_master_timeout = 1000"
-  local sql="SELECT now(), @@GLOBAL.gtid_executed"
-  ./m -N <<< "$sql; CREATE DATABASE test_jfg; $sql"
+  ./m -N <<< "CREATE DATABASE test_jfg; SELECT now(), @@GLOBAL.gtid_executed"
   sleep 1; grep -e "Timeout waiting for reply of binlog" master/data/msandbox.err | tail -n 1
   ./stop_all > /dev/null
 }
 
-set_v org;       echo; echo "# org with GTID:";       run_test
-set_v bug113598; echo; echo "# bug113598 with GTID:"; run_test
+#create_sb "$gtid"; set_v bug113598; run_test AFTER_SYNC
 
-create_sb
+bs="org bug113598"
+#is="AFTER_SYNC AFTER_COMMIT"
+is="AFTER_SYNC"
 
-set_v org;       echo; echo "# org without GTID:";       run_test
-set_v bug113598; echo; echo "# bug113598 without GTID:"; run_test
+create_sb "$gtid"
+for b in $bs; do for i in $is; do set_v $b; echo; echo "# With GTIDs, $b, $i:"; run_test $i; done; done
+
+create_sb ""
+for b in $bs; do for i in $is; do set_v $b; echo; echo "# Without GTIDs, $b, $i:"; run_test $i; done; done
 
 set_v org; rm -rf $sb_dir
-
 )
 
-# org with GTID:
-2024-04-11 19:50:32     00019301-1111-1111-1111-111111111111:1-34
-2024-04-11 19:50:33     00019301-1111-1111-1111-111111111111:1-35
-2024-04-11T19:50:33.622931Z 12 [Warning] [MY-011153] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000002, pos: 589), semi-sync up to file mysql-bin.000002, position 392.
+# With GTIDs, org, AFTER_SYNC:
+2024-04-12 21:21:14     00019301-1111-1111-1111-111111111111:1-35
+2024-04-12T21:21:14.678170Z 11 [Warning] [MY-011153] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000002, pos: 589), semi-sync up to file mysql-bin.000002, position 392.
 
-# bug113598 with GTID:
-2024-04-11 19:50:56     00019301-1111-1111-1111-111111111111:1-36
-2024-04-11 19:50:57     00019301-1111-1111-1111-111111111111:1-37
-2024-04-11T19:50:57.929998Z 12 [Warning] [MY-014071] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000003, pos: 598, gtid: 00019301-1111-1111-1111-111111111111:37), semi-sync up to file mysql-bin.000003, position 401.
+# With GTIDs, bug113598, AFTER_SYNC:
+2024-04-12 21:21:38     00019301-1111-1111-1111-111111111111:1-37
+2024-04-12T21:21:38.002242Z 11 [Warning] [MY-014071] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000003, pos: 598, gtid: 00019301-1111-1111-1111-111111111111:37), semi-sync up to file mysql-bin.000003, position 401.
 
-# org without GTID:
-2024-04-11 19:52:45
-2024-04-11 19:52:46
-2024-04-11T19:52:46.718553Z 12 [Warning] [MY-011153] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000002, pos: 549), semi-sync up to file mysql-bin.000002, position 352.
+# Without GTIDs, org, AFTER_SYNC:
+2024-04-12 21:23:29
+2024-04-12T21:23:29.933685Z 11 [Warning] [MY-011153] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000002, pos: 549), semi-sync up to file mysql-bin.000002, position 352.
 
-# bug113598 without GTID:
-2024-04-11 19:53:08
-2024-04-11 19:53:10
-2024-04-11T19:53:10.021778Z 12 [Warning] [MY-014071] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000003, pos: 558, gtid: ANONYMOUS), semi-sync up to file mysql-bin.000003, position 361.
+# Without GTIDs, bug113598, AFTER_SYNC:
+2024-04-12 21:23:54
+2024-04-12T21:23:54.310762Z 11 [Warning] [MY-014071] [Repl] Timeout waiting for reply of binlog (file: mysql-bin.000003, pos: 558, gtid: ANONYMOUS), semi-sync up to file mysql-bin.000003, position 361.
 ```
 
 
