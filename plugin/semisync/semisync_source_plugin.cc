@@ -341,11 +341,14 @@ DEFINE_WAIT_FOR_REPLICA_COUNT(wait_for_replica_count)
 #endif
 
 static MYSQL_SYSVAR_BOOL(
-    log_gtid_timeout, rpl_semi_sync_source_log_gtid_timeout, PLUGIN_VAR_OPCMDARG,
+    log_gtid_timeout,                      /* name  */
+    rpl_semi_sync_source_log_gtid_timeout, /* var   */
+    PLUGIN_VAR_OPCMDARG,                   /* flags */
     "Enable semi-synchronous replication source timeout gtid logging (disabled by default). ",
-    nullptr,  // check
-    nullptr,  // update
-    0);
+    nullptr, /* check()  */
+    nullptr, /* update() */
+    0        /* default  */
+  );
 
 static SYS_VAR *semi_sync_master_system_vars[] = {
     MYSQL_SYSVAR(enabled),
