@@ -797,7 +797,7 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
           /* Get the gtid of this transaction for logging. */
           const Gtid *gtid = &(current_thd->owned_gtid);
 
-          //  Gtid::to_string does not handle ANONYMOUS, so extra work is needed.
+          /*  Gtid::to_string does not handle ANONYMOUS, so extra work is needed. */
           Gtid_specification spec;
           if (gtid->sidno == THD::OWNED_SIDNO_ANONYMOUS) {
             spec.set_anonymous();
