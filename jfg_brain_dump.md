@@ -86,6 +86,7 @@ So we could use `current_thd` to get the GTID of the trx:
 
 But when testing this, `current_thd->variables.gtid_next` is `AUTOMATIC`, arg !
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 2024-02-14: Starting back on this after almost a month...
 
 The last tests were on using `thd->variables.gtid_next`to get the gtid, but
@@ -96,6 +97,7 @@ at this point in the code, assignment has been done, but not in
 `current_thd->variables.gtid_next`, only temporarily in
 [`current_thd->owned_gtid`][owned_gtid].
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 2024-04-09: Starting back on this after two months...
 
 Previous work was in 8.2, but 8.3 released on 2024-01-16, so should pivot.
@@ -109,14 +111,59 @@ Arg: global_sid_map was removed in 8.3.0, it is now global_tsid_map.
 
 Impact is not too big, just s/global_sid_map/global_tsid_map/.
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 On 2024-04-11, all tests were working, I was ready to contrib.
 
-But on 2024-04-12, I tested with AFTER_COMMIT, and crash !
+But on 2024-04-12, I tested with AFTER_COMMIT, and crash !  Logs below.
+
+```
+2024-04-15T18:21:59Z UTC - mysqld got signal 11 ;
+Most likely, you have hit a bug, but this error can also be caused by malfunctioning hardware.
+BuildID[sha1]=76de265dc2bffe92ec5dd17300a9bf57f11b90a1
+Thread pointer: 0x7f89ac014180
+Attempting backtrace. You can use the following information to find out
+where mysqld died. If you see no messages after this, something went
+terribly wrong...
+stack_bottom = 7f8a086f6bf0 thread_stack 0x100000
+ #0 0x55de2fe845d1 _Z18print_fatal_signali at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/signal_handler.cc:154
+ #1 0x55de2fe84784 handle_fatal_signal at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/signal_handler.cc:230
+ #2 0x7f8a55c5b04f <unknown> at sysdeps/unix/sysv/linux/x86_64/libc_sigaction.c:0
+ #3 0x55de30c48693 _ZN5mysql4gtid4TsidC4ERKS1_ at gtid/tsid.h:63
+ #4 0x55de30c48693 _ZNK18Gtid_specification9to_stringEPK8Tsid_mapPcb at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_gtid_specification.cc:180
+ #5 0x7f8a4800fa0b _ZN18ReplSemiSyncMaster9commitTrxEPKcy at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/plugin/semisync/semisync_source.cc:805
+ #6 0x55de30c71cab _ZN14Trans_delegate12after_commitEP3THDb at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_handler.cc:833
+ #7 0x55de30bea926 _ZN13MYSQL_BIN_LOG32process_after_commit_stage_queueEP3THDS1_ at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/binlog.cc:8683
+ #8 0x55de30bff6cd _ZN13MYSQL_BIN_LOG14ordered_commitEP3THDbb at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/binlog.cc:9179
+ #9 0x55de30c00b39 _ZN13MYSQL_BIN_LOG6commitEP3THDb at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/binlog.cc:8403
+ #10 0x55de2ff989f1 _Z15ha_commit_transP3THDbb at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/handler.cc:1808
+ #11 0x55de2fe32aea _Z12trans_commitP3THDb at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/transaction.cc:246
+ #12 0x55de2fcc1f23 _Z15mysql_create_dbP3THDPKcP14HA_CREATE_INFO at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_db.cc:504
+ #13 0x55de2fd13205 _Z21mysql_execute_commandP3THDb at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_parse.cc:3764
+ #14 0x55de2fd154dc _Z20dispatch_sql_commandP3THDP12Parser_state at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_parse.cc:5301
+ #15 0x55de2fd173a3 _Z16dispatch_commandP3THDPK8COM_DATA19enum_server_command at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_parse.cc:2133
+ #16 0x55de2fd17e16 _Z10do_commandP3THD at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_parse.cc:1462
+ #17 0x55de2fe7491f handle_connection at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/conn_handler/connection_handler_per_thread.cc:303
+ #18 0x55de3172328f pfs_spawn_thread at /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/storage/perfschema/pfs.cc:3050
+ #19 0x7f8a55ca8133 start_thread at ./nptl/pthread_create.c:442
+ #20 0x7f8a55d287db clone3 at sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+ #21 0xffffffffffffffff <unknown>
+
+Trying to get some variables.
+Some pointers may be invalid and cause the dump to abort.
+Query (7f89ac007470): CREATE DATABASE test_jfg
+Connection ID (thread ID): 11
+Status: NOT_KILLED
+
+The manual page at http://dev.mysql.com/doc/mysql/en/crashing.html contains
+information that should help you find out what is causing the crash.
+```
 
 I might need [Trans_param](#trans_param) after all...
 
-OR get inspiration from how Trans_param is set:
+Or get inspiration from how Trans_param is set:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_handler.cc#L811
+
+Above was naive, it only takes into account AUTOMATIC...
 
 ...
 
@@ -163,15 +210,17 @@ function run_test() {
 
 #create_sb "$gtid"; set_v bug113598; run_test AFTER_SYNC
 
+is="AFTER_SYNC AFTER_COMMIT"
 bs="org bug113598"
-#is="AFTER_SYNC AFTER_COMMIT"
-is="AFTER_SYNC"
 
 create_sb "$gtid"
-for b in $bs; do for i in $is; do set_v $b; echo; echo "# With GTIDs, $b, $i:"; run_test $i; done; done
+for i in $is; do for b in $bs; do set_v $b; echo; echo "# With GTIDs, $i, $b:"; run_test $i; done; done
+
+# Add test for tags !
+# Add test for setting gtid_next !
 
 create_sb ""
-for b in $bs; do for i in $is; do set_v $b; echo; echo "# Without GTIDs, $b, $i:"; run_test $i; done; done
+for i in $is; do for b in $bs; do set_v $b; echo; echo "# Without GTIDs, $i, $b:"; run_test $i; done; done
 
 set_v org; rm -rf $sb_dir
 )
@@ -309,24 +358,19 @@ Thread 48 "connection" hit Breakpoint 2, call_after_sync_hook (queue_head=queue_
  
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 This is what I gathered from exploring above:
-- before calling [`call_after_sync_hook`][call_after_sync_hook], `ordered_commit` calls [`process_flush_stage_queue`][process_flush_stage_queue],
+- before calling [`call_after_sync_hook`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L9137), `ordered_commit` calls [`process_flush_stage_queue`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L9009),
+- `process_flush_stage_queue` calls [`assign_automatic_gtids_to_flush_group`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L8549),
+- `assign_automatic_gtids_to_flush_group` calls [`generate_automatic_gtid`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L1582),
+- `generate_automatic_gtid` calls [`acquire_ownership`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid_state.cc#L77),
+- `acquire_ownership` sets [`thd->owned_gtid`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/sql_class.h#L3723).
 
-- [`process_flush_stage_queue`][process_flush_stage_queue] calls [`assign_automatic_gtids_to_flush_group`][assign_automatic_gtids_to_flush_group],
+--> `thd->owned_gtid` is what should be used for logging.
 
-- [`assign_automatic_gtids_to_flush_group`][assign_automatic_gtids_to_flush_group] calls `generate_automatic_gtid`,
-
-- `generate_automatic_gtid` calls [`acquire_ownership`][acquire_ownership],
-
-- [`acquire_ownership`][acquire_ownership] sets [`thd->owned_gtid`][owned_gtid].
-
---> [`thd->owned_gtid`][owned_gtid] is what should be used for logging.
-
-[call_after_sync_hook]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L9137
-[process_flush_stage_queue]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L9009
-[assign_automatic_gtids_to_flush_group]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/binlog.cc#L8549
-
-[acquire_ownership]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid_state.cc#L77
-[owned_gtid]: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/sql_class.h#L3723
+2024-04-15: above was naive (using `thd->owned_gtid`) because this only works when
+`gtid_next` is AUTOMATIC.  All other cases also need to be taken into account.
+The best course of action is probably to take inspiration on
+`assign_automatic_gtids_to_flush_group` where all the cases are taken into
+account (`head->variables.gtid_next.type`).
 
 Below is the code-path for reaching `acquire_ownership`.
 
