@@ -44,36 +44,47 @@ there is the registration of trans_observer, storage_observer and transmit_obser
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L650
 
 One of these observers is [`repl_semi_report_commit`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L109),
-in which `ReplSemiSyncMaster:commitTrx` is called.
+in which [`ReplSemiSyncMaster:commitTrx`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source.cc#L635) is called.
 
-Update: below was a mistake, goto "Update" to skip.
+Update 2024-01-15: below was a mistake, goto next "Update 2024-01-15" below to
+skip.  Note to self: this was a short-lived mistake as it was only from
+2024-01-10.
 
-If we are able to get a GTID from the parameter of `repl_semi_report_commit`
+If we are able to get a GTID from the parameter of [`repl_semi_report_commit`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L109)
 (`Trans_param *param`), we will be able to push this information to `commitTrx`.
-More about this in the section [Trans_param](#trans_param)
+More about this parameter in the section [Trans_param](#trans_param)
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 But `ReplSemiSyncMaster:commitTrx` is also called in
 [`repl_semi_report_binlog_sync`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L95)
 where the transaction information is not available.  This code-path is used for
 `WAIT_AFTER_SYNC` ([rpl_semi_sync_master_wait_point](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_wait_point)),
-which is not the lossless semi-sync of 5.7.  These days, almost
-everyone should be using `WAIT_AFTER_COMMIT`
+~~which is not the lossless semi-sync of 5.7~~ (it is, I was mistaken).
+These days, almost ~~everyone should be using `WAIT_AFTER_COMMIT`~~
+(no, everyone should be using `WAIT_AFTER_SYNC`)
 (more about the difference in [Question about Semi-Synchronous Replication: the Answer with All the Details](https://percona.community/blog/2018/08/23/question-about-semi-synchronous-replication-answer-with-all-the-details/)).
 We could could compromise in fixing Bug#113598 only for lossless semi-sync.
-Or if we want the GTID also for the legacy semi-sync (`WAIT_AFTER_SYNC`), we could 
+Or if we want the GTID also for the legacy semi-sync (~~`WAIT_AFTER_SYNC`~~
+- no, the legacy semi=sync is `WAIT_AFTER_COMMIT`), we could 
 save the GTID in the `repl_semi_report_commit` function for usage in
 `repl_semi_report_binlog_sync`.
 
-Update: above was a mistake.  The `repl_semi_report_commit` observer is for 5.5
-semi-sync, and the lossless semi-sync of 5.7 uses the
+Update 2024-01-15: above was a mistake.  The `repl_semi_report_commit` observer
+is for 5.5 semi-sync, and the lossless semi-sync of 5.7 uses the
 `repl_semi_report_binlog_sync` observer (I confused `WAIT_AFTER_COMMIT` and
 `WAIT_AFTER_SYNC`, probably hoping things would be simple and I would only have to
 reference `Trans_gtid_info` from `Trans_param` to fix this).  I realized this
 doing tests and need to pivot.
 
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### GTID Explorations
+
 When checking `enum_gtid_type`, I saw that once a trx is assigned a GTID, this
 is indicated in `thd->variables.gtid_next`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L3707
+
+(Update 2024-04-16: ...above probably a mistake...)
 
 Reference to `thd->variables`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/sql_class.h#L1116
@@ -89,18 +100,20 @@ But when testing this, `current_thd->variables.gtid_next` is `AUTOMATIC`, arg !
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 2024-02-14: Starting back on this after almost a month...
 
-The last tests were on using `thd->variables.gtid_next`to get the gtid, but
+The last tests were on using `thd->variables.gtid_next` to get the gtid, but
 these showed this was still `AUTOMATIC` / not updated when calling 
 `repl_semi_report_binlog_sync`.  This lead to digging how GTIDs are assigned,
 details in the section [GTID Assignment](#gtid-assignment).  The TL&DR is that
 at this point in the code, assignment has been done, but not in
 `current_thd->variables.gtid_next`, only temporarily in
-[`current_thd->owned_gtid`][owned_gtid].
+`current_thd->owned_gtid`.
+
+(Update 2024-04-16: ...many errors in above, ...)
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 2024-04-09: Starting back on this after two months...
 
-Previous work was in 8.2, but 8.3 released on 2024-01-16, so should pivot.
+Previous work was in 8.2, but 8.3 released on 2024-01-16, so should rebase.
 
 But dbdeployer not working well with gtids in 8.3.0, so new hurdle.  This is solved
 with playing with dbdeployer options, see tests below.
@@ -158,12 +171,15 @@ The manual page at http://dev.mysql.com/doc/mysql/en/crashing.html contains
 information that should help you find out what is causing the crash.
 ```
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 I might need [Trans_param](#trans_param) after all...
 
 Or get inspiration from how Trans_param is set:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_handler.cc#L811
 
 Above was naive, it only takes into account AUTOMATIC...
+
+Which might mean there is a bug in the way `trans_param.gtid_info` is set...
 
 ...
 
@@ -273,10 +289,15 @@ Above in 8.3.0:
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 ### Trans_param
 
+`Trans_param` is a parameter to [`repl_semi_report_commit`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L109).
+
+`repl_semi_report_commit` is the [`after_commit`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L409C43-L409C55)
+hook of the pluggin.
+
 `Trans_param` definition:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/replication.h#L132
 
-It contains a `Trans_gtid_info`:
+It contains a `Trans_gtid_info` (`gtid_info`):
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/replication.h#L151
 
 `Trans_gtid_info` definition:
@@ -293,9 +314,37 @@ This definition is not super clear.  There is a sid, a type, a sidno and a gno.
 `type` indicates ANONYMOUS, ...
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L3689
 
-`sidno` is nto fully understood
+`sidno` is not fully understood
 
 `gno` is the numeric part of the gtid
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+Kind of weird that `Trans_param` does not "just" contain a
+[`Gtid_specification`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_gtid.h#L3803),
+and that `Trans_gtid_info` almost re-invents `Gtid_specification`.
+
+`gtid_info` is set in `Trans_delegate::after_commit`:
+- 8.2.0: https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/rpl_handler.cc#L816
+- 8.0.36: https://github.com/jfg956/mysql-server/blob/mysql-8.0.36/sql/rpl_handler.cc#L812
+- 8.3.0: https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_handler.cc#L813
+
+`Trans_gtid_info` was introduced in 5.7 for GR (in file `sql/replication.h`):
+- https://github.com/jfg956/mysql-server/commit/22c27ae3aca2865be2f41381f80e91637c7403b7#diff-0195e233afcb258d67aa9c68f0810adea5733c6ce785869ce37455c9c7539cc9
+
+But it looks like `Trans_gtid_info` is not used in 5.7, at least not in
+`Trans_delegate::after_commit` (no `gtid_info` in below):
+- https://github.com/jfg956/mysql-server/blob/mysql-5.7.44/sql/rpl_handler.cc#L856
+
+But it is used in `Trans_delegate::before_commit`: 
+- https://github.com/jfg956/mysql-server/blob/mysql-5.7.44/sql/rpl_handler.cc#L643
+
+In all of 8.3.0, 8.2.0 and 8.0.36 (links above) and in
+`Trans_delegate::after_commit`, `gtid_info` is set from
+`thd->rpl_thd_ctx.last_used_gtid_tracker_ctx()`.  Considering we could access
+this via `current_thd` (`#include "sql/current_thd.h"`), `gtid_info` looks like
+a waste in `Trans_param`.
+
+...
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
