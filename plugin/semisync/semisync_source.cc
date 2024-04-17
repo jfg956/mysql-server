@@ -790,19 +790,23 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
       if (wait_result != 0) {
         /* This is a real wait timeout. */
 
-        /* Get the gtid of this transaction for logging. */
-        const Gtid *gtid = &(current_thd->owned_gtid);
-
-        /*  Gtid::to_string does not handle ANONYMOUS, so extra work is needed. */
-        Gtid_specification spec;
-        if (gtid->sidno == THD::OWNED_SIDNO_ANONYMOUS) {
-          spec.set_anonymous();
+        Gtid_specification gtid_spec;
+        const Gtid_specification *p_gtid_spec = &gtid_spec;
+        if (current_thd->variables.gtid_next.type == ANONYMOUS_GTID) {
+          gtid_spec.set_anonymous();
+        } else if (current_thd->variables.gtid_next.type == AUTOMATIC_GTID) {
+          Gtid gtid;
+          current_thd->rpl_thd_ctx.last_used_gtid_tracker_ctx().get_last_used_gtid(gtid);
+          gtid_spec.set(gtid);
+        } else if (current_thd->variables.gtid_next.type == ASSIGNED_GTID) {
+          p_gtid_spec = &(current_thd->variables.gtid_next);
         } else {
-          spec.set(*gtid);
+          bool unmanaged_gtid_next_type = true;
+          assert(unmanaged_gtid_next_type);
         }
 
-        char gtid_buf[spec.MAX_TEXT_LENGTH + 1];
-        spec.to_string(global_tsid_map, gtid_buf, true);
+        char gtid_buf[p_gtid_spec->MAX_TEXT_LENGTH + 1];
+        p_gtid_spec->to_string(global_tsid_map, gtid_buf, true);
 
         LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
                 trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
