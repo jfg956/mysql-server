@@ -129,6 +129,8 @@ On 2024-04-11, all tests were working, I was ready to contrib.
 
 But on 2024-04-12, I tested with AFTER_COMMIT, and crash !  Logs below.
 
+This prompted me to check [mysql-test](#mysql-test) !
+
 ```
 2024-04-15T18:21:59Z UTC - mysqld got signal 11 ;
 Most likely, you have hit a bug, but this error can also be caused by malfunctioning hardware.
@@ -446,6 +448,192 @@ Thread 48 "connection" hit Breakpoint 1, Gtid_state::acquire_ownership (this=thi
 #14 0x00000000048a7ae8 in pfs_spawn_thread (arg=0x9b4afe0) at ../../../mysql-8.2.0/storage/perfschema/pfs.cc:3049
 #15 0x00007ffff72a8134 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
 #16 0x00007ffff73287dc in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+```
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+### mysql-test
+
+Example of running mysql-test in below.
+- https://www.fromdual.com/building-mariadb-server-from-the-sources
+
+Laurynas blogged about script for running mtr:
+- https://of-code.blogspot.com/2024/01/introducing-patch2testlist-for-mysql.html
+
+Trying to check mysql-test doc, but it ended-up as an archeology expedition:
+- https://bugs.mysql.com/bug.php?id=114671
+
+...
+
+Below, example of a mysql-test semi-sync test, both working (mysql-8.3.0)
+and failing (mysql-8.3.0_bug113598 [commit link](https://github.com/jfg956/mysql-server/commit/06d50228147b534fd5d193e7072b892cb6a5ac74)).
+
+```
+mysql-8.3.0/build/debug/mysql-test$ ./mysql-test-run.pl rpl_nogtid.rpl_semi_sync
+Logging: /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0/mysql-test/mysql-test-run.pl  rpl_nogtid.rpl_semi_sync
+MySQL Version 8.3.0
+Path length (117) is longer than maximum supported length (108) and will be truncated at /usr/lib/x86_64-linux-gnu/perl-base/Socket.pm line 193.
+Too long tmpdir path '/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0/build/debug/mysql-test/var/tmp'  creating a shorter one
+ - Using tmpdir: '/tmp/QXQV1md6K2'
+
+Checking supported features
+ - Binaries are debug compiled
+Using 'all' suites
+Collecting tests
+ - Adding combinations for rpl_nogtid
+Checking leftover processes
+Removing old var directory
+Creating var directory '/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0/build/debug/mysql-test/var'
+Installing system database
+Using parallel: 1
+
+==============================================================================
+                  TEST NAME                       RESULT  TIME (ms) COMMENT
+------------------------------------------------------------------------------
+[ 25%] rpl_nogtid.rpl_semi_sync 'mix'            [ pass ]  212678
+[ 50%] rpl_nogtid.rpl_semi_sync 'row'            [ pass ]  210683
+[ 75%] rpl_nogtid.rpl_semi_sync 'stmt'           [ pass ]  211838
+[100%] shutdown_report                           [ pass ]
+------------------------------------------------------------------------------
+The servers were restarted 2 times
+The servers were reinitialized 0 times
+Spent 635.199 of 753 seconds executing testcases
+
+Completed: All 4 tests were successful.
+```
+
+```
+mysql-8.3.0_bug113598/build/debug/mysql-test$ ./mysql-test-run.pl rpl_nogtid.rpl_semi_sync
+Logging: /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/mysql-test/mysql-test-run.pl  rpl_nogtid.rpl_semi_sync
+MySQL Version 8.3.0
+Path length (127) is longer than maximum supported length (108) and will be truncated at /usr/lib/x86_64-linux-gnu/perl-base/Socket.pm line 193.
+Too long tmpdir path '/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/build/debug/mysql-test/var/tmp'  creating a shorter one
+ - Using tmpdir: '/tmp/uTpLF67dnn'
+
+Checking supported features
+ - Binaries are debug compiled
+Using 'all' suites
+Collecting tests
+ - Adding combinations for rpl_nogtid
+Checking leftover processes
+Removing old var directory
+Creating var directory '/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/build/debug/mysql-test/var'
+Installing system database
+Using parallel: 1
+
+==============================================================================
+                  TEST NAME                       RESULT  TIME (ms) COMMENT
+------------------------------------------------------------------------------
+[ 25%] rpl_nogtid.rpl_semi_sync 'mix'            [ fail ]
+        Test ended at 2024-04-17 18:51:04
+
+CURRENT_TEST: rpl_nogtid.rpl_semi_sync
+mysqltest: At line 109: Query 'create table t1 (a int) engine=$engine_type' failed.
+ERROR 2013 (HY000): Lost connection to MySQL server during query
+
+The result from queries just before the failure was:
+rpl_semi_sync_source_enabled    OFF
+[ enable semi-sync on source ]
+set global rpl_semi_sync_source_enabled = 1;
+show variables like 'rpl_semi_sync_source_enabled';
+Variable_name   Value
+rpl_semi_sync_source_enabled    ON
+[ status of semi-sync on source should be ON even without any semi-sync slaves ]
+show status like 'Rpl_semi_sync_source_clients';
+Variable_name   Value
+Rpl_semi_sync_source_clients    0
+show status like 'Rpl_semi_sync_source_status';
+Variable_name   Value
+Rpl_semi_sync_source_status     ON
+show status like 'Rpl_semi_sync_source_yes_tx';
+Variable_name   Value
+Rpl_semi_sync_source_yes_tx     0
+#
+# BUG#45672 Semisync repl: ActiveTranx:insert_tranx_node: transaction node allocation failed
+# BUG#45673 Semisync reports correct operation even if no slave is connected
+#
+safe_process[4603]: Child process: 4604, exit: 1
+
+
+Server [mysqld.1 - pid: 4509, winpid: 4509, exit: 256] failed during test run
+Server log from this test:
+----------SERVER LOG START-----------
+[...]
+mysqld: /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_gtid.h:1114: void Gtid::set(rpl_sidno, rpl_gno): Assertion `sidno_arg > 0' failed.
+[...]
+----------SERVER LOG END-------------
+
+
+ - the logfile can be found in '/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/build/debug/mysql-test/var/log/rpl_nogtid.rpl_semi_sync-mix/rpl_semi_sync.log'
+
+ - found 'core' (0/5)
+
+Trying 'dbx' to get a backtrace
+
+Trying 'gdb' to get a backtrace
+Guessing that core was generated by '/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/build/debug/runtime_output_directory/mysqld'
+Output from gdb follows. The first stack trace is from the failing thread.
+The following stack traces are from all threads (so the failing one is
+duplicated).
+--------------------------
+[...]
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+Core was generated by `/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug1135'.
+Program terminated with signal SIGABRT, Aborted.
+#0  __pthread_kill_implementation (threadid=<optimized out>, signo=6, no_tid=<optimized out>) at ./nptl/pthread_kill.c:44
+44      ./nptl/pthread_kill.c: No such file or directory.
+[Current thread is 1 (Thread 0x7f1ad03f16c0 (LWP 4615))]
+#0  __pthread_kill_implementation (threadid=<optimized out>, signo=6, no_tid=<optimized out>) at ./nptl/pthread_kill.c:44
+#1  0x000055f915137762 in my_write_core (sig=6) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/mysys/stacktrace.cc:339
+#2  0x000055f913c72899 in handle_fatal_signal (sig=6) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/signal_handler.cc:235
+#3  <signal handler called>
+#4  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at ./nptl/pthread_kill.c:44
+#5  0x00007f1ae6fcae8f in __pthread_kill_internal (signo=6, threadid=<optimized out>) at ./nptl/pthread_kill.c:78
+#6  0x00007f1ae6f7bfb2 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26
+#7  0x00007f1ae6f66472 in __GI_abort () at ./stdlib/abort.c:79
+#8  0x00007f1ae6f66395 in __assert_fail_base (fmt=0x7f1ae70daa90 "%s%s%s:%u: %s%sAssertion `%s' failed.\n%n", assertion=assertion@entry=0x7f1ae00a6a79 "sidno_arg > 0", file=file@entry=0x7f1ae00a6a18 "/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_gtid.h", line=line@entry=1114, function=function@entry=0x7f1ae00a69f0 "void Gtid::set(rpl_sidno, rpl_gno)") at ./assert/assert.c:92
+#9  0x00007f1ae6f74eb2 in __GI___assert_fail (assertion=0x7f1ae00a6a79 "sidno_arg > 0", file=0x7f1ae00a6a18 "/home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_gtid.h", line=1114, function=0x7f1ae00a69f0 "void Gtid::set(rpl_sidno, rpl_gno)") at ./assert/assert.c:101
+#10 0x00007f1ae009d9c7 in Gtid::set (this=0x7f1ad03eb788, sidno_arg=0, gno_arg=0) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_gtid.h:1114
+#11 0x00007f1ae009da72 in Gtid_specification::set (this=0x7f1ad03eb780, sidno=0, gno=0) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_gtid.h:4004
+#12 0x00007f1ae009dabc in Gtid_specification::set (this=0x7f1ad03eb780, gtid_param=...) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_gtid.h:4041
+#13 0x00007f1ae009b414 in ReplSemiSyncMaster::commitTrx (this=0x7f1a3804acf0, trx_wait_binlog_name=0x7f1a3806ed30 "master-bin.000001", trx_wait_binlog_pos=360) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/plugin/semisync/semisync_source.cc:800
+#14 0x00007f1ae00a3d72 in repl_semi_report_commit (param=0x7f1ad03ebae0) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/plugin/semisync/semisync_source_plugin.cc:115
+#15 0x000055f914d68d33 in Trans_delegate::after_commit (this=0x55f9193024b8 <delegates_init()::place_trans_mem>, thd=0x7f1a38001050, all=true) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/rpl_handler.cc:833
+#16 0x000055f914c9cb96 in MYSQL_BIN_LOG::process_after_commit_stage_queue (this=0x55f919300ce0 <mysql_bin_log>, thd=0x7f1a38001050, first=0x7f1a38001050) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/binlog.cc:8683
+#17 0x000055f914c9e707 in MYSQL_BIN_LOG::ordered_commit (this=0x55f919300ce0 <mysql_bin_log>, thd=0x7f1a38001050, all=true, skip_commit=false) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/binlog.cc:9179
+#18 0x000055f914c9bf20 in MYSQL_BIN_LOG::commit (this=0x55f919300ce0 <mysql_bin_log>, thd=0x7f1a38001050, all=true) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/binlog.cc:8403
+#19 0x000055f913e1a60d in ha_commit_trans (thd=0x7f1a38001050, all=true, ignore_global_read_lock=false) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/handler.cc:1808
+#20 0x000055f913bde2a1 in trans_commit_implicit (thd=0x7f1a38001050, ignore_global_read_lock=false) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/transaction.cc:339
+#21 0x000055f913b01a8e in mysql_create_table (thd=0x7f1a38001050, create_table=0x7f1a38023078, create_info=0x7f1ad03edfb0, alter_info=0x7f1ad03ede40) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_table.cc:10345
+#22 0x000055f9141a0053 in Sql_cmd_create_table::execute (this=0x7f1a38024010, thd=0x7f1a38001050) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_cmd_ddl_table.cc:459
+#23 0x000055f913a269b8 in mysql_execute_command (thd=0x7f1a38001050, first_level=true) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_parse.cc:3579
+#24 0x000055f913a2c279 in dispatch_sql_command (thd=0x7f1a38001050, parser_state=0x7f1ad03efa00) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_parse.cc:5301
+#25 0x000055f913a2295a in dispatch_command (thd=0x7f1a38001050, com_data=0x7f1ad03f0a80, command=COM_QUERY) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_parse.cc:2133
+#26 0x000055f913a207a4 in do_command (thd=0x7f1a38001050) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/sql_parse.cc:1462
+#27 0x000055f913c5cfa0 in handle_connection (arg=0x55f91c584210) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/sql/conn_handler/connection_handler_per_thread.cc:303
+#28 0x000055f915d770e9 in pfs_spawn_thread (arg=0x55f91c2fc8a0) at /home/jgagne/src/github/https/jfg956/mysql-server/worktrees/mysql-8.3.0_bug113598/storage/perfschema/pfs.cc:3050
+#29 0x00007f1ae6fc9134 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#30 0x00007f1ae70497dc in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+[...]
+------------------------------------------------------------------------------
+1  of 3 test(s) completed.
+Not all tests completed: rpl_nogtid.rpl_semi_sync rpl_nogtid.rpl_semi_sync
+
+The servers were restarted 0 times
+The servers were reinitialized 0 times
+Spent 0.000 of 181 seconds executing testcases
+
+In completed tests: Failed 1/1 tests, 0.00% were successful.
+
+Failing test(s): rpl_nogtid.rpl_semi_sync
+
+The log files in var/log may give you some hint of what went wrong.
+
+If you want to report this error, please read first the documentation
+at http://dev.mysql.com/doc/mysql/en/mysql-test-suite.html
+
+mysql-test-run: *** ERROR: there were failing test cases
 ```
 
 
