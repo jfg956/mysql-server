@@ -52,7 +52,7 @@ skip.  Note to self: this was a short-lived mistake as it was only from
 
 If we are able to get a GTID from the parameter of [`repl_semi_report_commit`](https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/plugin/semisync/semisync_source_plugin.cc#L109)
 (`Trans_param *param`), we will be able to push this information to `commitTrx`.
-More about this parameter in the section [Trans_param](#trans_param)
+More about this parameter in the section [Trans_param](#trans_param).
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 But `ReplSemiSyncMaster:commitTrx` is also called in
@@ -192,44 +192,49 @@ Which might mean there is a bug in the way `trans_param.gtid_info` is set...
 ```
 export mysql_v=8.3.0
 export gtid='-c gtid_mode=ON -c enforce-gtid-consistency -c relay-log-recovery=on'
+export type="" # "" or "-debug".
 
 (
 export bin_dir="$HOME/opt/mysql/mysql_$mysql_v"
-build_dir="$HOME/src/github/https/jfg956/mysql-server/worktrees/mysql-${mysql_v}_bug113598/build/default"
+build_dir="$HOME/src/github/https/jfg956/mysql-server/worktrees/mysql-${mysql_v}_bug113598/build"
 sb_dir="$HOME/sandboxes/rsandbox_mysql_${mysql_v//./_}"
 
 f=$bin_dir/bin/mysqld
 test -e ${f}_org || mv ${f}{,_org}
-cp $build_dir/bin/mysqld ${f}_bug113598
+rsync $build_dir/default/bin/mysqld ${f}_bug113598
+rsync $build_dir/debug/bin/mysqld ${f}-debug_bug113598
 
 f=$bin_dir/lib/plugin/semisync_master.so
 test -e ${f}_org || mv ${f}{,_org}
-cp $build_dir/plugin_output_directory/semisync_master.so ${f}_bug113598
+rsync $build_dir/default/plugin_output_directory/semisync_master.so ${f}_bug113598
+rsync $build_dir/debug/plugin_output_directory/semisync_master.so ${f}-debug_bug113598
 
 function set_v() {
-  ( cd $bin_dir/bin; rm -f mysqld; ln -s mysqld_$1 mysqld; )
-  ( cd $bin_dir/lib/plugin; rm -f semisync_master.so; ln -s semisync_master.so_$1 semisync_master.so; )
+  ( cd $bin_dir/bin; rm -f mysqld; ln -s mysqld$1 mysqld; )
+  ( cd $bin_dir/lib/plugin; rm -f semisync_master.so; ln -s semisync_master.so$1 semisync_master.so; )
 }
 
 function create_sb() {
-  cd; rm -rf $sb_dir; set_v org
+  cd; rm -rf $sb_dir; set_v _org
   dbdeployer deploy replication mysql_$mysql_v $1 --semi-sync > /dev/null
-  cd $sb_dir; ./stop_all > /dev/null
+  cd $sb_dir
+  ( ./node1/stop& ./node2/stop& wait; ./stop_all; ) > /dev/null
 }
 
 function run_test() {
-  ./start_all > /dev/null
-  ( s="SET GLOBAL rpl_semi_sync_master_"; ./m <<< "DROP DATABASE IF EXISTS test_jfg; ${s}timeout=1000; ${s}wait_point=$1"; )
-  ( ./node1/stop > /dev/null& ./node2/stop >/dev/null& wait; )
+  local wp=$1
+  ( ./master/start; ./node1/start& ./node2/start& wait; )  > /dev/null
+  ( s="SET GLOBAL rpl_semi_sync_master_"; ./m <<< "DROP DATABASE IF EXISTS test_jfg; ${s}timeout=1000; ${s}wait_point=$wp"; )
+  ( ./node1/stop& ./node2/stop& wait; ) > /dev/null
   ./m -N <<< "CREATE DATABASE test_jfg; SELECT now(), @@GLOBAL.gtid_executed"
   sleep 1; grep -e "Timeout waiting for reply of binlog" master/data/msandbox.err | tail -n 1
   ./stop_all > /dev/null
 }
 
-#create_sb "$gtid"; set_v bug113598; run_test AFTER_SYNC
+#create_sb "$gtid"; set_v ${type}_bug113598; run_test AFTER_SYNC
 
 is="AFTER_SYNC AFTER_COMMIT"
-bs="org bug113598"
+bs="_org ${type}_bug113598"
 
 create_sb "$gtid"
 for i in $is; do for b in $bs; do set_v $b; echo; echo "# With GTIDs, $i, $b:"; run_test $i; done; done
@@ -240,7 +245,7 @@ for i in $is; do for b in $bs; do set_v $b; echo; echo "# With GTIDs, $i, $b:"; 
 create_sb ""
 for i in $is; do for b in $bs; do set_v $b; echo; echo "# Without GTIDs, $i, $b:"; run_test $i; done; done
 
-set_v org; rm -rf $sb_dir
+set_v _org; rm -rf $sb_dir
 )
 
 # With GTIDs, org, AFTER_SYNC:
@@ -285,7 +290,8 @@ Above in 8.3.0:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.3.0/sql/rpl_gtid_execution.cc#L529
 - https://github.com/jfg956/mysql-server/blob/mysql-8.2.0/sql/item_gtid_func.cc#L110
 
-...
+Remembering: because I first used `Trans_param`, I needed to manually `to_string`
+`Trans_gtid_info` (in this [commit](https://github.com/jfg956/mysql-server/commit/beb69daa22711c9792cc54645a1e4938e6a89339)).
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
