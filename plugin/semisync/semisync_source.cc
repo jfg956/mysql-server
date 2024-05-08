@@ -29,11 +29,11 @@
 #include "my_byteorder.h"
 #include "my_compiler.h"
 #include "my_systime.h"
-#include "sql/mysqld.h"  // max_connections
-#if defined(ENABLED_DEBUG_SYNC)
 #include "sql/current_thd.h"
-#include "sql/debug_sync.h"
+#include "sql/mysqld.h"  // max_connections
 #include "sql/sql_class.h"
+#if defined(ENABLED_DEBUG_SYNC)
+#include "sql/debug_sync.h"
 #endif
 
 #define TIME_THOUSAND 1000
@@ -789,9 +789,29 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
 
       if (wait_result != 0) {
         /* This is a real wait timeout. */
-        LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT,
-               trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
-               reply_file_name_, (unsigned long)reply_file_pos_);
+
+        Gtid_specification gtid_spec;
+        const Gtid_specification *p_gtid_spec = &gtid_spec;
+        if (current_thd->variables.gtid_next.type == ANONYMOUS_GTID) {
+          gtid_spec.set_anonymous();
+        } else if (current_thd->variables.gtid_next.type == AUTOMATIC_GTID) {
+          Gtid gtid;
+          current_thd->rpl_thd_ctx.last_used_gtid_tracker_ctx().get_last_used_gtid(gtid);
+          gtid_spec.set(gtid);
+        } else if (current_thd->variables.gtid_next.type == ASSIGNED_GTID) {
+          p_gtid_spec = &(current_thd->variables.gtid_next);
+        } else {
+          bool unmanaged_gtid_next_type = true;
+          assert(unmanaged_gtid_next_type);
+        }
+
+        char gtid_buf[p_gtid_spec->MAX_TEXT_LENGTH + 1];
+        p_gtid_spec->to_string(global_tsid_map, gtid_buf, true);
+
+        LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
+                trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
+                gtid_buf, reply_file_name_, (unsigned long)reply_file_pos_);
+
         rpl_semi_sync_source_wait_timeouts++;
 
         /* switch semi-sync off */
