@@ -1,3 +1,17 @@
+--- Begin of branch notes.
+
+This is a branch of https://github.com/jfg956/mysql-server.
+
+The branch link is https://github.com/jfg956/mysql-server/tree/mysql-8.0.36_bug113598.
+
+More about this work in https://github.com/jfg956/mysql-server/blob/mysql-8.0.36_bug113598/jfg_brain_dump.md.
+
+This is a daughter branch of https://github.com/jfg956/mysql-server/blob/mysql-8.3.0_bug113598.
+
+Fake PR for this branch: https://github.com/jfg956/mysql-server/pull/6.
+
+--- End of branch notes.
+
 Copyright (c) 2000, 2024, Oracle and/or its affiliates.
 
 This is a release of MySQL, an SQL database server.
