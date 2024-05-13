@@ -87,6 +87,9 @@ File_query_log::write_slow:
 "fill database field":
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L1095
 
+log_slow_extra (Sys_slow_log_extra):
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/sys_vars.cc#L5867
+
 ...
 
 
