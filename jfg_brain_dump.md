@@ -72,6 +72,43 @@ Interstingly, while doing this work, I discovered the `log-short-format` option:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L702
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/mysqld.cc#L12718
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+Because I am adding `Db: ...` to the logs, I thought I could get rid of the
+`use ...` line, but this was naive.  Without it, a `use <db>` end-up as a weird
+line in the slow log filei (with `long_query_time = 0`):
+```
+# Time: 2024-05-13T20:22:39.590264Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    15  Db: test_jfg
+# Query_time: 0.000238  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1715631759;
+SELECT DATABASE();
+# Time: 2024-05-13T20:22:39.590633Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    15  Db: test
+# Query_time: 0.000070  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1715631759;
+```
+
+Normally it would be as below (see `use test_jfg;` below while no `use` in 
+above).
+```
+# Time: 2024-05-13T20:23:11.736782Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    15
+# Query_time: 0.000210  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1715631791;
+SELECT DATABASE();
+# Time: 2024-05-13T20:23:11.737096Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    15
+# Query_time: 0.000100  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+use test_jfg;
+SET timestamp=1715631791;
+```
+
+Note: a `use <db>` in the client is below in the general log.
+```
+2024-05-13T20:17:42.072665Z        14 Init DB   test_jfg
+```
+
 ...
 
 
