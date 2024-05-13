@@ -1,11 +1,11 @@
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-We would like to implement (not fix, because it is a feature request)
+I would like to implement (not fix, because it is a feature request)
 [Bug#106645](https://bugs.mysql.com/bug.php?id=106645):
 Slow query log is not logging database/schema name.
 
-This improvements was suggested to me (JFG) by a colleague (voluntarily
+This improvement was suggested to me (JFG) by a colleague (voluntarily
 holding details to avoid exposing internal Aiven politics in public GitHub).
 While starting to work on this, I found there was a public FR on the subject.
 
@@ -16,11 +16,12 @@ this change lands in PS without too much complication for Percona.
 As mentioned in the public FR
 ([Bug#106645](https://bugs.mysql.com/bug.php?id=106645)), the `mysql.slow_log`
 table already includes a `db` column, so adding it to the slow log file should
-not be too complicated a change.  The complexity will be brought by
+not be too complicated a change.  The additional complexity is brought by
 making sure it does not break existing tooling parsing the slow log file.  A way
 to achieve this is to put this change behind a feature flag / global
 variable.  This also allows back-porting this change in 8.0 and 8.4 (with
-the default to OFF).  Eventually, this global variable should be deprectated.
+the default to OFF).  Eventually, this global variable could be deprecated if
+the change is considered good for everyone (IMHO, it is).
 The name I have in mind for above global variable is
 `log_slow_extra_db = { OFF | ON }`.
 
@@ -29,7 +30,7 @@ of, we already have [log_slow_extra](https://dev.mysql.com/doc/refman/8.0/en/ser
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-Currently, MySQL logis a line like below in the slow log.
+Currently, MySQL logs a line like below in the slow log file.
 ```
 # User@Host: msandbox[msandbox] @ localhost []  Id:    12
 ```
