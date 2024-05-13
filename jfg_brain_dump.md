@@ -21,9 +21,11 @@ making sure it does not break existing tooling parsing the slow log file.  A way
 to achieve this is to put this change behind a feature flag / global
 variable.  This also allows back-porting this change in 8.0 and 8.4 (with
 the default to OFF).  Eventually, this global variable should be deprectated.
-
 The name I have in mind for above global variable is
 `log_slow_extra_db = { OFF | ON }`.
+
+Note that a global variable to control the output of the slow log is not unheard
+of, we already have [log_slow_extra](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_log_slow_extra).
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
