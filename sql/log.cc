@@ -699,6 +699,9 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
   mysql_mutex_lock(&LOCK_log);
   assert(is_open());
 
+  /* Local copy for avoiding race condition if changed during logging. */
+  bool local_opt_log_slow_extra_db = opt_log_slow_extra_db;
+
   if (!(specialflag & SPECIAL_SHORT_LOG_FORMAT)) {
     char my_timestamp[iso8601_size];
 
@@ -711,9 +714,19 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     if (my_b_write(&log_file, (uchar *)buff, buff_len)) goto err;
 
     buff_len = snprintf(buff, 32, "%5u", thd->thread_id());
-    if (my_b_printf(&log_file, "# User@Host: %s  Id: %s\n", user_host, buff) ==
-        (uint)-1)
-      goto err;
+    if (!local_opt_log_slow_extra_db) {
+      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s\n", user_host, buff) ==
+          (uint)-1)
+        goto err;
+    } else if (thd->db().str) {
+      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, thd->db().str) ==
+          (uint)-1)
+        goto err;
+    } else {
+      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  NoDb\n", user_host, buff) ==
+          (uint)-1)
+        goto err;
+    }
   }
 
   /* For slow query log */
@@ -802,7 +815,10 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
       goto err; /* purecov: inspected */
   }
 
-  if (thd->db().str && strcmp(thd->db().str, db)) {  // Database changed
+  /* Log database change only when not logging Db (log_slow_extra_db == OFF). */
+  /* With SPECIAL_SHORT_LOG_FORMAT, log change because the line with Db is omitted. */
+  if ((!local_opt_log_slow_extra_db || (specialflag & SPECIAL_SHORT_LOG_FORMAT))
+      && thd->db().str && strcmp(thd->db().str, db)) {
     if (my_b_printf(&log_file, "use %s;\n", thd->db().str) == (uint)-1)
       goto err;
     my_stpcpy(db, thd->db().str);

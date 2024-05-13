@@ -47,6 +47,9 @@ of the `mysql.slow_log` table, even though it would partially match the content 
 matching `mysql.slow_log` is not unheard of, `mysql.slow_log.thread_id` is logged
 as `Id:`.  So I could change my mind about the name.
 
+Addition: there is the case where no Db is selected.  In this case, having
+`Db: ...` does not work.  For this, I log `NoDb` instead of `Db: ...`.
+
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 While preparing this work, I saw that Percona Server has `Rows_affected` in its
@@ -59,6 +62,17 @@ TODO: open a FR to add fields to
 `performance_schema.events_statements_summary_by_digest`:
 - Bytes_received and Bytes_sent;
 - Read_first, Read_last, Read_key, Read_next, Read_prev, Read_rnd and Read_rnd_next.
+
+Interestingly, while doing this work, I saw that there is a `use ...` logged on
+with the 1st slow log entry in a different db, link to code below.
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L805
+
+Interstingly, while doing this work, I discovered the `log-short-format` option:
+- https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_log-short-format
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L702
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/mysqld.cc#L12718
+
+...
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
