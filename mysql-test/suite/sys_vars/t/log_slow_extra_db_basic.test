@@ -41,7 +41,7 @@ SELECT @@global.log_slow_extra_db;
 SET GLOBAL log_slow_extra_db=OFF;
 SELECT @@global.log_slow_extra_db;
 
-SET GLOBAL log_slolog_slow_extra_db_extra=ON;
+SET GLOBAL log_slow_extra_db=ON;
 SELECT @@global.log_slow_extra_db;
 
 SET GLOBAL log_slow_extra_db=DEFAULT;
