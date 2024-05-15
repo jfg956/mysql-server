@@ -65,8 +65,13 @@ Interestingly, while doing this work, I saw that there is a `use ...` logged
 with the 1st slow log entry in a different db, link to code below.
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L805
 
-This `use ...` brings unplanned complexity, see details in
+This `use ...` looks redundant with `log_slow_extra_db = ON`, so I removed it.
+It lead to some rabbit-holing, see details in
 [Slow Query Log File contains use](#slow-query-log-file-contains-use).
+
+TODO: mysqldumpslow - https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html
+
+TODO: mysql-test/t/mysqldumpslow.test
 
 ...
 
@@ -359,6 +364,22 @@ mtr test added for this work:
 
 ```
 ./mtr --skip-ndb --skip-rpl --force
+
+# Using suite(s):
+#   auth_sec,binlog,binlog_gtid,binlog_nogtid,clone,collations,component_keyring_file,
+#   connection_control,encryption,federated,funcs_2,gcol,gis,information_schema,innodb,innodb_fts,innodb_gis,
+#   innodb_undo,innodb_zip,interactive_utilities,json,main,opt_trace,parts,perfschema,query_rewrite_plugins,
+#   rpl,rpl_gtid,rpl_nogtid,secondary_engine,service_status_var_registration,service_sys_var_registration,
+#   service_udf_registration,sys_vars,sysschema,test_service_sql_api,test_services,x
+
+# could skip:
+# - binlog_gtid.*
+# - binlog_nogtid.*
+# - component_keyring_file.*
+# - clone.*
+# - secondary_engine.*
+# - x.*
+# - ...
 
 ...
 ```
