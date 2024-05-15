@@ -13,20 +13,29 @@ This colleague told me Percona Server has this feature.  I will refrain from
 checking PS code, but I will allow myself to check PS behavior to make sure
 this change lands in PS without too much complication for Percona.
 
+[Slow Query Log File Examples](#slow-query-log-file-examples)
+
 As mentioned in the public FR
 ([Bug#106645](https://bugs.mysql.com/bug.php?id=106645)), the `mysql.slow_log`
 table already includes a `db` column, so adding it to the slow log file should
-not be too complicated a change.  The additional complexity is brought by
-making sure it does not break existing tooling parsing the slow log file.  A way
+not be too complicated a change.  The marginal additional complexity is
+making sure this change does not break existing tooling parsing the slow query log
+file.  A way
 to achieve this is to put this change behind a feature flag / global
 variable.  This also allows back-porting this change in 8.0 and 8.4 (with
 the default to OFF).  Eventually, this global variable could be deprecated if
 the change is considered good for everyone (IMHO, it is).
-The name I have in mind for above global variable is
+The name I have in mind for this variable is
 `log_slow_extra_db = { OFF | ON }`.
 
-Note that a global variable to control the output of the slow log is not unheard
-of, we already have [log_slow_extra](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_log_slow_extra).
+Note that a variable to control the output of the slow log is not unheard
+of, we already have
+- [log_slow_admin_statements](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_log_slow_admin_statements)
+- [log_slow_extra](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_log_slow_extra)
+- [log_slow_replica_statements](https://dev.mysql.com/doc/refman/8.4/en/replication-options-replica.html#sysvar_log_slow_replica_statements)
+- [long_query_time](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_long_query_time)
+- [min_examined_row_limit](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_min_examined_row_limit)
+
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
@@ -52,27 +61,192 @@ Addition: there is the case where no Db is selected.  In this case, having
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-While preparing this work, I saw that Percona Server has `Rows_affected` in its
-slow log file output (MySQL does not).  I opened a feature request for this,
-framing it in such a way that it does not read "please implement this feature
-from Percona".  ;-)
-- [Bug#114961: Please consider adding fields to log_slow_extra](https://bugs.mysql.com/bug.php?id=114961)
-
-TODO: open a FR to add fields to
-`performance_schema.events_statements_summary_by_digest`:
-- Bytes_received and Bytes_sent;
-- Read_first, Read_last, Read_key, Read_next, Read_prev, Read_rnd and Read_rnd_next.
-
-Interestingly, while doing this work, I saw that there is a `use ...` logged on
+Interestingly, while doing this work, I saw that there is a `use ...` logged
 with the 1st slow log entry in a different db, link to code below.
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L805
 
-Interstingly, while doing this work, I discovered the `log-short-format` option:
-- https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_log-short-format
-- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L702
-- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/mysqld.cc#L12718
+This `use ...` brings unplanned complexity, see details in
+[Slow Query Log File contains use](#slow-query-log-file-contains-use).
+
+...
+
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Doc links
+
+MySQL - The Slow Query log:
+- 8.0: https://dev.mysql.com/doc/refman/8.0/en/slow-query-log.html
+- 8.4: https://dev.mysql.com/doc/refman/8.4/en/slow-query-log.html
+
+Percona - Slow query log:
+- https://docs.percona.com/percona-server/8.0/slow-extended.html
+
+MariaDB - Slow Query Log Overview:
+- https://mariadb.com/kb/en/slow-query-log-overview/
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Code Notes
+
+TBC...
+
+write_slow:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L349
+
+File_query_log::write_slow:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L688
+
+"fill database field":
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L1095
+
+log_slow_extra (Sys_slow_log_extra):
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/sys_vars.cc#L5867
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Slow Query Log File Examples
+
+Doing this in 8.0 because I want to compare with Percona Server (PS 8.4.0 is not
+out), and in .36 because PS .37 is not out.
+
+From what I see, no change from 8.0 to 8.4.
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### MySQL 8.0.36
+
+Defalut (`log_slow_extra = OFF`):
+```
+# Time: 2024-05-10T17:44:36.400424Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    12
+# Query_time: 0.000237  Lock_time: 0.000004 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1715363076;
+select * from t;
+```
+
+With `log_slow_extra = ON`:
+```
+# Time: 2024-05-10T17:45:09.474988Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    12
+# Query_time: 0.000244  Lock_time: 0.000003 Rows_sent: 0  Rows_examined: 0 Thread_id: 12 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 1 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2024-05-10T17:45:09.474744Z End: 2024-05-10T17:45:09.474988Z
+SET timestamp=1715363109;
+select * from t;
+```
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### PS 8.0.36
+
+Default (`log_slow_extra = OFF` and `log_slow_verbosity = ''`): see line with
+`Schema: ...` which is not in MySQL.
+```
+# Time: 2024-05-10T17:46:20.595386Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    12
+# Schema: test_jfg  Last_errno: 0  Killed: 0
+# Query_time: 0.000221  Lock_time: 0.000004  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Bytes_sent: 56
+SET timestamp=1715363180;
+select * from t;
+```
+
+With `log_slow_extra = ON` (and `log_slow_verbosity = ''`): `Schema: ...` is gone,
+looks like 100% MySQL compatible !
+```
+# Time: 2024-05-10T17:46:53.147579Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    12
+# Query_time: 0.000259  Lock_time: 0.000004 Rows_sent: 0  Rows_examined: 0 Thread_id: 12 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 1 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2024-05-10T17:46:53.147320Z End: 2024-05-10T17:46:53.147579Z Schema: test_jfg Rows_affected: 0
+SET timestamp=1715363213;
+select * from t;
+```
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+With `log_slow_verbosity = full` and `log_slow_extra = OFF`: back at PS style
+(with `Schema: ...`) !
+```
+# Time: 2024-05-10T17:52:26.336958Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    13
+# Schema: test_jfg  Last_errno: 0  Killed: 0
+# Query_time: 0.000218  Lock_time: 0.000004  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Bytes_sent: 56
+# Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 1
+SET timestamp=1715363546;
+select * from t;
+```
+
+With `log_slow_verbosity = full` and `log_slow_extra = ON`: back at MySQL
+stlye (`Schema: ...` gone) !
+```
+# Time: 2024-05-10T17:53:53.210758Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    14
+# Query_time: 0.000248  Lock_time: 0.000005 Rows_sent: 0  Rows_examined: 0 Thread_id: 14 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 1 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2024-05-10T17:53:53.210510Z End: 2024-05-10T17:53:53.210758Z Schema: test_jfg Rows_affected: 0
+# Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 1
+SET timestamp=1715363633;
+select * from t;
+```
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### MySQL 8.4.0
+
+Defalut (`log_slow_extra = OFF`):
+```
+# Time: 2024-05-10T19:40:45.931162Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    15
+# Query_time: 0.000262  Lock_time: 0.000004 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1715370045;
+select * from t;
+```
+
+With `log_slow_extra = ON`:
+```
+# Time: 2024-05-10T19:41:28.293662Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    15
+# Query_time: 0.000256  Lock_time: 0.000005 Rows_sent: 0  Rows_examined: 0 Thread_id: 15 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 1 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2024-05-10T19:41:28.293406Z End: 2024-05-10T19:41:28.293662Z
+SET timestamp=1715370088;
+select * from t;
+```
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### MariaDB 11.3.2
+
+Suppested by Arjen Lentz:
+- https://www.linkedin.com/feed/update/urn:li:activity:7195819671365771264?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7195819671365771264%2C7195994602758189058%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287195994602758189058%2Curn%3Ali%3Aactivity%3A7195819671365771264%29
+
+```
+# Time: 240515 17:02:39
+# User@Host: msandbox[msandbox] @ localhost []
+# Thread_id: 8  Schema: test_jfg  QC_hit: No
+# Query_time: 0.000166  Lock_time: 0.000069  Rows_sent: 0  Rows_examined: 0
+# Rows_affected: 0  Bytes_sent: 65
+SET timestamp=1715792559;
+select * from t;
+```
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Slow Query Log File contains use
 
 Because I am adding `Db: ...` to the logs, I thought I could get rid of the
 `use ...` line, but this was naive.  Without it, a `use <db>` end-up as a weird
@@ -114,154 +288,55 @@ Note: a `use <db>` in the client is below in the general log.
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-### Doc links
+### Testing:
 
-MySQL Slow log:
-- 8.0: https://dev.mysql.com/doc/refman/8.0/en/slow-query-log.html
-- 8.4: https://dev.mysql.com/doc/refman/8.4/en/slow-query-log.html
+mtr tests found related to Slow Query Log:
+- log_slow https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_slow.test
+- log_tables https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_tables.test
+- slow_log (flaky: failed then succeeded) https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/slow_log.test
+- sys_vars.slow_query_log_basic https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_basic.test
+- sys_vars.slow_query_log_file_basic https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_basic.test
+- sys_vars.slow_query_log_func https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func.test
 
-Percona Slow Log:
-- https://docs.percona.com/percona-server/8.0/slow-extended.html
+mtr test found related to things adjacent to this work:
+- sys_vars.log_slow_extra_basic https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/log_slow_extra_basic.test
+
+mtr test added for this work:
+- sys_vars.log_slow_extra_db_basic
 
 
-<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
-
-### Code Notes
-
-TBC...
-
-write_slow:
-- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L349
-
-File_query_log::write_slow:
-- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L688
-
-"fill database field":
-- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L1095
-
-log_slow_extra (Sys_slow_log_extra):
-- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/sys_vars.cc#L5867
+```
+./mtr --skip-ndb --skip-rpl --force
 
 ...
+```
+
+TODO: what happen when it is a replication slow log entry (mysql-test/suite/rpl/t/rpl_slow_query_log) ?
+
+TODO: mysql-test/r/persisted_variables_extended
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-### Slow Query Log Examples
+### Other Notes
 
-Doing this in 8.0 because I want to compare with Percona Server (PS 8.4.0 is not
-out), and in .36 because PS .37 is not out.
+While preparing this work, I saw that Percona Server has `Rows_affected` in its
+slow log file output (MySQL does not).  I opened a feature request for this,
+framing it in such a way that it does not read "please implement this feature
+from Percona".  ;-)
+- [Bug#114961: Please consider adding fields to log_slow_extra](https://bugs.mysql.com/bug.php?id=114961)
 
-From what I see, no change from 8.0 to 8.4.
+TODO: open a FR to add fields to
+`performance_schema.events_statements_summary_by_digest`:
+- Bytes_received and Bytes_sent;
+- Read_first, Read_last, Read_key, Read_next, Read_prev, Read_rnd and Read_rnd_next.
 
+Interstingly, while doing this work, I discovered the `log-short-format` option:
+- https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_log-short-format
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L702
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/mysqld.cc#L12718
 
-<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
-
-#### MySQL 8.0.36
-
-Defalut (`log_slow_extra = OFF`):
-```
-# Time: 2024-05-10T17:44:36.400424Z
-# User@Host: msandbox[msandbox] @ localhost []  Id:    12
-# Query_time: 0.000237  Lock_time: 0.000004 Rows_sent: 0  Rows_examined: 0
-SET timestamp=1715363076;
-select * from t;
-```
-
-With `log_slow_extra = ON`:
-```
-# Time: 2024-05-10T17:45:09.474988Z
-# User@Host: msandbox[msandbox] @ localhost []  Id:    12
-# Query_time: 0.000244  Lock_time: 0.000003 Rows_sent: 0  Rows_examined: 0 Thread_id: 12 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 1 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2024-05-10T17:45:09.474744Z End: 2024-05-10T17:45:09.474988Z
-SET timestamp=1715363109;
-select * from t;
-```
-
-
-<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
-
-#### PS 8.0.36
-
-Default (`log_slow_extra = OFF` and `log_slow_verbosity = ''`): see line with
-`Schema: ...` not present in MySQL.
-```
-# Time: 2024-05-10T17:46:20.595386Z
-# User@Host: msandbox[msandbox] @ localhost []  Id:    12
-# Schema: test_jfg  Last_errno: 0  Killed: 0
-# Query_time: 0.000221  Lock_time: 0.000004  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Bytes_sent: 56
-SET timestamp=1715363180;
-select * from t;
-```
-
-With `log_slow_extra = ON` (and `log_slow_verbosity = ''`): `Schema: ...` is gone,
-looks like 100% MySQL compatible !
-```
-# Time: 2024-05-10T17:46:53.147579Z
-# User@Host: msandbox[msandbox] @ localhost []  Id:    12
-# Query_time: 0.000259  Lock_time: 0.000004 Rows_sent: 0  Rows_examined: 0 Thread_id: 12 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 1 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2024-05-10T17:46:53.147320Z End: 2024-05-10T17:46:53.147579Z Schema: test_jfg Rows_affected: 0
-SET timestamp=1715363213;
-select * from t;
-```
-
-<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
-
-With `log_slow_verbosity = full` and `log_slow_extra = OFF`: back at PS style,
-with `Schema: ...` back !
-```
-# Time: 2024-05-10T17:52:26.336958Z
-# User@Host: msandbox[msandbox] @ localhost []  Id:    13
-# Schema: test_jfg  Last_errno: 0  Killed: 0
-# Query_time: 0.000218  Lock_time: 0.000004  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Bytes_sent: 56
-# Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
-# InnoDB_trx_id: 0
-# Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
-# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
-#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
-#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
-#   InnoDB_pages_distinct: 1
-SET timestamp=1715363546;
-select * from t;
-```
-
-With `log_slow_verbosity = full` and `log_slow_extra = ON`: back at MySQL
-stlye, with `Schema: ...` gone !
-```
-# Time: 2024-05-10T17:53:53.210758Z
-# User@Host: msandbox[msandbox] @ localhost []  Id:    14
-# Query_time: 0.000248  Lock_time: 0.000005 Rows_sent: 0  Rows_examined: 0 Thread_id: 14 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 1 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2024-05-10T17:53:53.210510Z End: 2024-05-10T17:53:53.210758Z Schema: test_jfg Rows_affected: 0
-# Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
-# InnoDB_trx_id: 0
-# Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
-# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
-#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
-#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
-#   InnoDB_pages_distinct: 1
-SET timestamp=1715363633;
-select * from t;
-```
-
-
-<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
-
-#### MySQL 8.4.0
-
-Defalut (`log_slow_extra = OFF`):
-```
-# Time: 2024-05-10T19:40:45.931162Z
-# User@Host: msandbox[msandbox] @ localhost []  Id:    15
-# Query_time: 0.000262  Lock_time: 0.000004 Rows_sent: 0  Rows_examined: 0
-SET timestamp=1715370045;
-select * from t;
-```
-
-With `log_slow_extra = ON`:
-```
-# Time: 2024-05-10T19:41:28.293662Z
-# User@Host: msandbox[msandbox] @ localhost []  Id:    15
-# Query_time: 0.000256  Lock_time: 0.000005 Rows_sent: 0  Rows_examined: 0 Thread_id: 15 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 1 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2024-05-10T19:41:28.293406Z End: 2024-05-10T19:41:28.293662Z
-SET timestamp=1715370088;
-select * from t;
-```
+...
 
 
 <!-- EOF -->
