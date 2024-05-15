@@ -713,19 +713,22 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     /* Note that my_b_write() assumes it knows the length for this */
     if (my_b_write(&log_file, (uchar *)buff, buff_len)) goto err;
 
+    /* We could rewrite below to avoid code duplication. */
+    /* This could allow a single my_b_printf, but would prevent code grepping. */
+    /* So we accept code duplication. */
     buff_len = snprintf(buff, 32, "%5u", thd->thread_id());
     if (!local_opt_log_slow_extra_db) {
-      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s\n", user_host, buff) ==
-          (uint)-1)
-        goto err;
-    } else if (thd->db().str) {
-      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, thd->db().str) ==
-          (uint)-1)
+      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s\n", user_host, buff) == (uint)-1)
         goto err;
     } else {
-      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  NoDb\n", user_host, buff) ==
-          (uint)-1)
-        goto err;
+      db[0] = 0;  /* Reset db triggers logging db change if disabling log_slow_extra_db. */
+      if (thd->db().str) {
+        if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, thd->db().str) == (uint)-1)
+          goto err;
+      } else {
+        if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  NoDb\n", user_host, buff) == (uint)-1)
+          goto err;
+      }
     }
   }
 
@@ -816,7 +819,7 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
   }
 
   /* Log database change only when not logging Db (log_slow_extra_db == OFF). */
-  /* With SPECIAL_SHORT_LOG_FORMAT, log change because the line with Db is omitted. */
+  /* With SPECIAL_SHORT_LOG_FORMAT, log db change because the line with Db is omitted above. */
   if ((!local_opt_log_slow_extra_db || (specialflag & SPECIAL_SHORT_LOG_FORMAT))
       && thd->db().str && strcmp(thd->db().str, db)) {
     if (my_b_printf(&log_file, "use %s;\n", thd->db().str) == (uint)-1)
