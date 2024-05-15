@@ -248,6 +248,9 @@ select * from t;
 
 ### Slow Query Log File contains use
 
+Update: I can get rid of the `use ...`, below analysis was wrong, goto next
+Update for details.
+
 Because I am adding `Db: ...` to the logs, I thought I could get rid of the
 `use ...` line, but this was naive.  Without it, a `use <db>` end-up as a weird
 line in the slow log filei (with `long_query_time = 0`):
@@ -283,7 +286,56 @@ Note: a `use <db>` in the client is below in the general log.
 2024-05-13T20:17:42.072665Z        14 Init DB   test_jfg
 ```
 
-...
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+Update: above was a wrong analysis, I missed the fact the there was another
+important line
+in the logs after the use: `# administrator command: ...`.  Below are complete
+slow query log file examples.
+
+With `log_slow_extra_db=on`:
+```
+# Time: 2024-05-15T18:20:52.787991Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11  Db: test_jfg1
+# Query_time: 0.000150  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1715797252;
+SELECT DATABASE();
+# Time: 2024-05-15T18:20:52.788153Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11  Db: test_jfg2
+# Query_time: 0.000058  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1715797252;
+# administrator command: Init DB;
+# Time: 2024-05-15T18:20:52.789712Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11  Db: test_jfg2
+# Query_time: 0.000644  Lock_time: 0.000005 Rows_sent: 7  Rows_examined: 29
+SET timestamp=1715797252;
+show databases;
+```
+
+With `log_slow_extra_db=off`:
+```
+# Time: 2024-05-15T18:21:48.514700Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11
+# Query_time: 0.000162  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1715797308;
+SELECT DATABASE();
+# Time: 2024-05-15T18:21:48.514842Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11
+# Query_time: 0.000060  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+use test_jfg1;
+SET timestamp=1715797308;
+# administrator command: Init DB;
+# Time: 2024-05-15T18:21:48.517127Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11
+# Query_time: 0.000650  Lock_time: 0.000004 Rows_sent: 7  Rows_examined: 29
+SET timestamp=1715797308;
+show databases;
+```
+
+Out of curiosity, I did some code archeology about this `use ...` in the slow query
+log file, it dates back from at least MySQL 3.23 and Jul 31, 2000 (I cannot date
+this exactly as the matching commit is "Import changeset").
+- https://github.com/jfg956/mysql-server/blob/f4c589ff6c653d1d2a09c26e46ead3c8a15655d8/sql/log.cc#L547
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
