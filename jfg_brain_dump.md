@@ -39,6 +39,9 @@ of, we already have
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
+Update: another option that I did not considered initially is to always have
+`use ...` in the slow query log file, see below.
+
 Currently, MySQL logs a line like below in the slow log file.
 ```
 # User@Host: msandbox[msandbox] @ localhost []  Id:    12
@@ -68,6 +71,8 @@ with the 1st slow log entry in a different db, link to code below.
 This `use ...` looks redundant with `log_slow_extra_db = ON`, so I removed it.
 It lead to some rabbit-holing, see details in
 [Slow Query Log File contains use](#slow-query-log-file-contains-use).
+
+Update: ...not remove, embrace and add all the time, but what about NoDb ?...
 
 TODO: mysqldumpslow - https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html
 
@@ -271,6 +276,8 @@ SELECT DATABASE();
 SET timestamp=1715631759;
 ```
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
 Normally it would be as below (see `use test_jfg;` below while no `use` in 
 above).
 ```
@@ -290,6 +297,9 @@ Note: a `use <db>` in the client is below in the general log.
 ```
 2024-05-13T20:17:42.072665Z        14 Init DB   test_jfg
 ```
+
+This `Init DB` is probably coming from here:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/sql_parse.cc#L227
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
@@ -316,6 +326,8 @@ SET timestamp=1715797252;
 SET timestamp=1715797252;
 show databases;
 ```
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 With `log_slow_extra_db=off`:
 ```
