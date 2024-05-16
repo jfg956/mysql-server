@@ -72,7 +72,12 @@ This `use ...` looks redundant with `log_slow_extra_db = ON`, so I removed it.
 It lead to some rabbit-holing, see details in
 [Slow Query Log File contains use](#slow-query-log-file-contains-use).
 
-Update: ...not remove, embrace and add all the time, but what about NoDb ?...
+Update: instead of removing the `use ...`, we could embrace it and always log it.
+This has the advantage of not changing the format of the log, but makes it
+inconvenient to indicate queries not run in a database (`NoDb`).  The absence of
+a `use ...` could be a synonym for `NoDb`, but I am not sure I like this.
+Anyhow, I might go down the road of always logging `use ...`, my mind is not
+made yet.
 
 TODO: mysqldumpslow - https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html
 
@@ -300,6 +305,12 @@ Note: a `use <db>` in the client is below in the general log.
 
 This `Init DB` is probably coming from here:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/sql_parse.cc#L227
+
+Related to above, list of Server Commands:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/include/my_command.h#L55
+
+Doc on COM_INIT_DB:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/protocol_classic.cc#L1440
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
