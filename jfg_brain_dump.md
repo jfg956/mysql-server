@@ -83,6 +83,8 @@ TODO: mysqldumpslow - https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html
 
 TODO: mysql-test/t/mysqldumpslow.test
 
+TODO: mysqldumpslow broken with "administrator command", because `";\n#` delimitor.
+
 ...
 
 
