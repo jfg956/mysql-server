@@ -80,6 +80,7 @@ Anyhow, I might go down the road of always logging `use ...`, my mind is not
 made yet.
 
 TODO: mysqldumpslow - https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html
+- https://bugs.mysql.com/bug.php?id=115084
 
 TODO: mysql-test/t/mysqldumpslow.test
 
