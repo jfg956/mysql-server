@@ -19,6 +19,8 @@
 #                                                                              #
 ################################################################################
 
+# Leaving a note to Oracle to update the header of this file.
+#   I do not know what it should be, but referencong 5.1 doc should be removed.
 
 --echo '#--------------------FN_DYNVARS_018_01-------------------------#'
 ####################################################################
@@ -31,3 +33,100 @@ let $MYSQLD_DATADIR= `select @@datadir`;
 --file_exists $MYSQLD_DATADIR/my_slow_test.log
 
 --echo ## This case should pass because we have set this filename in opt file ##
+
+--echo
+--echo Save.
+SET @global_log_slow_extra = @@global.log_slow_extra;
+SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
+
+--echo
+--echo Commun to all next tests.
+SET @@session.long_query_time=0.1;
+
+--echo
+--echo ## Testing log_slow_extra behavior.
+
+--echo
+--echo log_slow_extra are done with log_slow_extra_db = 1.
+SET @@global.log_slow_extra_db = 1;
+
+--echo
+--echo Clearing the Slow Log File and creating a new one.
+--remove_file $MYSQLD_DATADIR/my_slow_test.log
+FLUSH SLOW LOGS;
+
+--echo
+--echo Testing log_slow_extra = 0.
+SET @@global.log_slow_extra = 0;
+SELECT sleep(0.5);
+
+--echo
+--echo Checking the Slow Log File.
+# Masking out the non-deterministic parameters from the results.
+--replace_regex /.*Version.*started with.*\n// /^Tcp port:.*Unix socket:.*\n// /^Time.*Id.*Command.*Argument.*\n// /^# Time: .*/# Time: x/ /^# User@Host:.*Id:.*Db:/# User@Host: n Id: n Db:/ /^# User@Host:.*Id:.*Db:/# UH: n Id: n Db:/ /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/ /Thread_id:.*Errno:/Thread_id: n Errno:/ /Bytes_received:.*Bytes_sent:.*Read_first:/Bytes_received: n Bytes_sent: n Read_first:/ /Start:.*End:.*/Start: n End: n/ /SET timestamp=.*;/SET timestamp=n;/
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+--echo
+--echo Clearing the Slow Log File and creating a new one.
+--remove_file $MYSQLD_DATADIR/my_slow_test.log
+FLUSH SLOW LOGS;
+
+--echo
+--echo Testing log_slow_extra = 1.
+SET @@global.log_slow_extra = 1;
+SELECT sleep(0.5);
+
+--echo
+--echo Checking the Slow Log File.
+# Masking out the non-deterministic parameters from the results.
+--replace_regex /.*Version.*started with.*\n// /^Tcp port:.*Unix socket:.*\n// /^Time.*Id.*Command.*Argument.*\n// /^# Time: .*/# Time: x/ /^# User@Host:.*Id:.*Db:/# User@Host: n Id: n Db:/ /^# User@Host:.*Id:.*Db:/# UH: n Id: n Db:/ /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/ /Thread_id:.*Errno:/Thread_id: n Errno:/ /Bytes_received:.*Bytes_sent:.*Read_first:/Bytes_received: n Bytes_sent: n Read_first:/ /Start:.*End:.*/Start: n End: n/ /SET timestamp=.*;/SET timestamp=n;/
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+--echo
+--echo ## Testing log_slow_extra_db behavior.
+
+--echo
+--echo log_slow_extra_db are done with log_slow_extra = 0.
+SET @@global.log_slow_extra = 0;
+
+--echo
+--echo Clearing the Slow Log File and creating a new one.
+--remove_file $MYSQLD_DATADIR/my_slow_test.log
+FLUSH SLOW LOGS;
+
+--echo 
+--echo Testing log_slow_extra_db = 0.
+SET @@global.log_slow_extra_db = 0;
+SELECT sleep(0.5);
+
+--echo
+--echo Checking the Slow Log File.
+# Masking out the non-deterministic parameters from the results.
+# Replacing User@Host by UH as a trick to conserve "Db:" when there 
+--replace_regex /.*Version.*started with.*\n// /^Tcp port:.*Unix socket:.*\n// /^Time.*Id.*Command.*Argument.*\n// /^# Time: .*/# Time: x/ /^# User@Host:.*Id:.*Db:/# UH: n Id: n Db:/ /^# User@Host:.*Id:.*/# UH: n Id: n/ /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/ /SET timestamp=.*;/SET timestamp=n;/
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+--echo
+--echo Clearing the Slow Log File and creating a new one.
+--remove_file $MYSQLD_DATADIR/my_slow_test.log
+FLUSH SLOW LOGS;
+
+--echo
+--echo Testing log_slow_extra_db = 1.
+SET @@global.log_slow_extra_db = 1;
+SELECT sleep(0.5);
+
+--echo
+--echo Checking the Slow Log File.
+# Masking out the non-deterministic parameters from the results.
+# Replacing User@Host by UH as a trick to conserve "Db:" when there 
+--replace_regex /.*Version.*started with.*\n// /^Tcp port:.*Unix socket:.*\n// /^Time.*Id.*Command.*Argument.*\n// /^# Time: .*/# Time: x/ /^# User@Host:.*Id:.*Db:/# UH: n Id: n Db:/ /^# User@Host:.*Id:.*/# UH: n Id: n/ /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/ /SET timestamp=.*;/SET timestamp=n;/
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+# Cleanup.
+--remove_file $MYSQLD_DATADIR/my_slow_test.log
+
+--echo
+--echo Restore.
+SET @@global.log_slow_extra = @global_log_slow_extra;
+SET @@global.log_slow_extra_db = @global_log_slow_extra_db;

@@ -1,3 +1,89 @@
 '#--------------------FN_DYNVARS_018_01-------------------------#'
 ## Checking if my_slow_test.log exists in servers datadir ##
 ## This case should pass because we have set this filename in opt file ##
+
+Save.
+SET @global_log_slow_extra = @@global.log_slow_extra;
+SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
+
+Commun to all next tests.
+SET @@session.long_query_time=0.1;
+
+## Testing log_slow_extra behavior.
+
+log_slow_extra are done with log_slow_extra_db = 1.
+SET @@global.log_slow_extra_db = 1;
+
+Clearing the Slow Log File and creating a new one.
+FLUSH SLOW LOGS;
+
+Testing log_slow_extra = 0.
+SET @@global.log_slow_extra = 0;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+Checking the Slow Log File.
+# Time: x
+# UH: n Id: n Db: test
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1
+SET timestamp=n;
+SELECT sleep(0.5);
+
+Clearing the Slow Log File and creating a new one.
+FLUSH SLOW LOGS;
+
+Testing log_slow_extra = 1.
+SET @@global.log_slow_extra = 1;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+Checking the Slow Log File.
+# Time: x
+# UH: n Id: n Db: test
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1 Thread_id: n Errno: 0 Killed: 0 Bytes_received: n Bytes_sent: n Read_first: 0 Read_last: 0 Read_key: 0 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 0 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: n End: n
+SET timestamp=n;
+SELECT sleep(0.5);
+
+## Testing log_slow_extra_db behavior.
+
+log_slow_extra_db are done with log_slow_extra = 0.
+SET @@global.log_slow_extra = 0;
+
+Clearing the Slow Log File and creating a new one.
+FLUSH SLOW LOGS;
+
+Testing log_slow_extra_db = 0.
+SET @@global.log_slow_extra_db = 0;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+Checking the Slow Log File.
+# Time: x
+# UH: n Id: n
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1
+use test;
+SET timestamp=n;
+SELECT sleep(0.5);
+
+Clearing the Slow Log File and creating a new one.
+FLUSH SLOW LOGS;
+
+Testing log_slow_extra_db = 1.
+SET @@global.log_slow_extra_db = 1;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+Checking the Slow Log File.
+# Time: x
+# UH: n Id: n Db: test
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1
+SET timestamp=n;
+SELECT sleep(0.5);
+
+Restore.
+SET @@global.log_slow_extra = @global_log_slow_extra;
+SET @@global.log_slow_extra_db = @global_log_slow_extra_db;
