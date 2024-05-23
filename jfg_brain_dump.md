@@ -13,7 +13,11 @@ This colleague told me Percona Server has this feature.  I will refrain from
 checking PS code, but I will allow myself to check PS behavior to make sure
 this change lands in PS without too much complication for Percona.
 
-[Slow Query Log File Examples](#slow-query-log-file-examples)
+Section on [Slow Query Log File Examples](#slow-query-log-file-examples).
+
+Note: Bug#106645 above was opened in 2022, but people have been asking for
+database/schema in the Slow Query Log for a long time: below report from 2006.
+- [Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046)
 
 As mentioned in the public FR
 ([Bug#106645](https://bugs.mysql.com/bug.php?id=106645)), the `mysql.slow_log`
@@ -79,12 +83,16 @@ a `use ...` could be a synonym for `NoDb`, but I am not sure I like this.
 Anyhow, I might go down the road of always logging `use ...`, my mind is not
 made yet.
 
-TODO: mysqldumpslow - https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html
-- https://bugs.mysql.com/bug.php?id=115084
+While working on this, I discovered the
+[mysqldumpslow](https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html)
+utility  unclear what the impact of my work will be on it.
 
-TODO: mysql-test/t/mysqldumpslow.test
+There are mysql-test about mysqldumpslow, more about this in the section
+[Testing mysqldumpslow](#testing-mysqldumpslow)
 
-TODO: mysqldumpslow broken with "administrator command", because `";\n#` delimitor.
+While looking a mysqldumpslow, I saw it is  broken with "administrator command",
+which I reported in below.
+- [Bug#115084i: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
 
 ...
 
@@ -413,6 +421,93 @@ mtr test added for this work:
 TODO: what happen when it is a replication slow log entry (mysql-test/suite/rpl/t/rpl_slow_query_log) ?
 
 TODO: mysql-test/r/persisted_variables_extended
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Testing mysqldumpslow
+
+Existing test ok (`mysql-test/t/mysqldumpslow.test`):
+```
+/mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/build/default/mysql-test$ ./mtr mysql-test/t/mysqldumpslow.test
+Logging: /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/mysql-test/mysql-test-run.pl  mysql-test/t/mysqldumpslow.test
+MySQL Version 8.4.0
+Path length (128) is longer than maximum supported length (108) and will be truncated at /usr/lib/x86_64-linux-gnu/perl-base/Socket.pm line 193.
+Too long tmpdir path '/mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/build/default/mysql-test/var/tmp'  creating a shorter one
+ - Using tmpdir: '/tmp/JRmlm2oCkg'
+
+Checking supported features
+Using 'all' suites
+Collecting tests
+Checking leftover processes
+Removing old var directory
+Creating var directory '/mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/build/default/mysql-test/var'
+Installing system database
+Using parallel: 1
+
+==============================================================================
+                  TEST NAME                       RESULT  TIME (ms) COMMENT
+------------------------------------------------------------------------------
+[ 50%] main.mysqldumpslow                        [ pass ]     54
+[100%] shutdown_report                           [ pass ]
+------------------------------------------------------------------------------
+The servers were restarted 0 times
+The servers were reinitialized 0 times
+Spent 0.054 of 93 seconds executing testcases
+
+Completed: All 2 tests were successful.
+```
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+Manual test:
+```
+dbdeployer deploy single mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
+
+./use <<< "create database test_jfg; create table test_jfg.t(id int); insert into test_jfg.t values (1);"
+./use test_jfg <<< "set session long_query_time=0.5; select sleep(1), t.* from test_jfg.t;" > /dev/null
+
+. sb_include && cat data/slow.log && $BASEDIR/bin/mysqldumpslow data/slow.log
+/home/jgagne/opt/mysql/mysql_8.4.0/bin/mysqld, Version: 8.4.0 (Source distribution). started with:
+Tcp port: 8400  Unix socket: /tmp/mysql_sandbox8400.sock
+Time                 Id Command    Argument
+# Time: 2024-05-23T18:45:31.526893Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    12  Db: test_jfg
+# Query_time: 1.000486  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1716489930;
+select sleep(1), t.* from test_jfg.t;
+
+Reading mysql slow query log from data/slow.log
+Count: 1  Time=1.00s (1s)  Lock=0.00s (0s)  Rows=1.0 (1), msandbox[msandbox]@localhost
+  select sleep(N), t.* from test_jfg.t
+
+./use test_jfg <<< "set global log_slow_extra_db=OFF; set session long_query_time=0.5; select sleep(1), t.* from test_jfg.t;"
+
+. sb_include && cat data/slow.log && $BASEDIR/bin/mysqldumpslow data/slow.log
+/home/jgagne/opt/mysql/mysql_8.4.0/bin/mysqld, Version: 8.4.0 (Source distribution). started with:
+Tcp port: 8400  Unix socket: /tmp/mysql_sandbox8400.sock
+Time                 Id Command    Argument
+# Time: 2024-05-23T18:45:31.526893Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    12  Db: test_jfg
+# Query_time: 1.000486  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1716489930;
+select sleep(1), t.* from test_jfg.t;
+# Time: 2024-05-23T18:48:06.989986Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    13
+# Query_time: 1.000381  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 1
+use test_jfg;
+SET timestamp=1716490085;
+select sleep(1), t.* from test_jfg.t;
+
+Reading mysql slow query log from data/slow.log
+Count: 2  Time=1.00s (2s)  Lock=0.00s (0s)  Rows=1.0 (2), msandbox[msandbox]@localhost
+  select sleep(N), t.* from test_jfg.t
+```
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+This working was expected as extra data at the end of the `User` line is ignored:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/scripts/mysqldumpslow.pl.in#L104
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
