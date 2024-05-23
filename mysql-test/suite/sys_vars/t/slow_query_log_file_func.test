@@ -102,7 +102,7 @@ SELECT sleep(0.5);
 --echo
 --echo Checking the Slow Log File.
 # Masking out the non-deterministic parameters from the results.
-# Replacing User@Host by UH as a trick to conserve "Db:" when there 
+# Replacing User@Host by UH as a trick to conserve "Db:" when it is there.
 --replace_regex /.*Version.*started with.*\n// /^Tcp port:.*Unix socket:.*\n// /^Time.*Id.*Command.*Argument.*\n// /^# Time: .*/# Time: x/ /^# User@Host:.*Id:.*Db:/# UH: n Id: n Db:/ /^# User@Host:.*Id:.*/# UH: n Id: n/ /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/ /SET timestamp=.*;/SET timestamp=n;/
 --exec cat $MYSQLD_DATADIR/my_slow_test.log
 
@@ -119,7 +119,7 @@ SELECT sleep(0.5);
 --echo
 --echo Checking the Slow Log File.
 # Masking out the non-deterministic parameters from the results.
-# Replacing User@Host by UH as a trick to conserve "Db:" when there 
+# Replacing User@Host by UH as a trick to conserve "Db:" when it is there.
 --replace_regex /.*Version.*started with.*\n// /^Tcp port:.*Unix socket:.*\n// /^Time.*Id.*Command.*Argument.*\n// /^# Time: .*/# Time: x/ /^# User@Host:.*Id:.*Db:/# UH: n Id: n Db:/ /^# User@Host:.*Id:.*/# UH: n Id: n/ /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/ /SET timestamp=.*;/SET timestamp=n;/
 --exec cat $MYSQLD_DATADIR/my_slow_test.log
 
