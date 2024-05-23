@@ -5887,7 +5887,7 @@ static Sys_var_bool Sys_slow_log_extra_db(
     "log_slow_extra_db",
     "Print db to the slow query log file. Has no effect on "
     "logging to table.",
-    GLOBAL_VAR(opt_log_slow_extra_db), CMD_LINE(OPT_ARG), DEFAULT(false),
+    GLOBAL_VAR(opt_log_slow_extra_db), CMD_LINE(OPT_ARG), DEFAULT(true),
     NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(check_slow_log_extra_db),
     ON_UPDATE(nullptr));
 
