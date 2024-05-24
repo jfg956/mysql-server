@@ -13,16 +13,21 @@ This colleague told me Percona Server has this feature.  I will refrain from
 checking PS code, but I will allow myself to check PS behavior to make sure
 this change lands in PS without too much complication for Percona.
 
-Section on [Slow Query Log File Examples](#slow-query-log-file-examples).
+Section on [Slow Query Log File Examples](#slow-query-log-file-examples)
+(there are also MariaDB examples in there).
 
-Note: Bug#106645 above was opened in 2022, but people have been asking for
-database/schema in the Slow Query Log for a long time: below report from 2006.
-- [Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046)
+Note: [Bug#106645](https://bugs.mysql.com/bug.php?id=106645
+was opened in 2022, but people have been asking for
+database/schema in the Slow Query Log for a long time:
+- This is from 2006: [Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046)
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 As mentioned in the public FR
 ([Bug#106645](https://bugs.mysql.com/bug.php?id=106645)), the `mysql.slow_log`
-table already includes a `db` column, so adding it to the slow log file should
-not be too complicated a change.  The marginal additional complexity is
+table already includes a `db` column, so adding database/schema to
+the slow query log file should
+not be too complicated.  The marginal additional complexity is
 making sure this change does not break existing tooling parsing the slow query log
 file.  A way
 to achieve this is to put this change behind a feature flag / global
@@ -40,13 +45,12 @@ of, we already have
 - [long_query_time](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_long_query_time)
 - [min_examined_row_limit](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_min_examined_row_limit)
 
-
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Update: another option that I did not considered initially is to always have
-`use ...` in the slow query log file, see below.
+`use ...` in the slow query log file, see below (TL&DR: I will not do this).
 
-Currently, MySQL logs a line like below in the slow log file.
+Currently, MySQL logs a line like below in the slow query log file.
 ```
 # User@Host: msandbox[msandbox] @ localhost []  Id:    12
 ```
@@ -69,7 +73,7 @@ Addition: there is the case where no Db is selected.  In this case, having
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Interestingly, while doing this work, I saw that there is a `use ...` logged
-with the 1st slow log entry in a different db, link to code below.
+with the 1st slow log entry in a different db, link to the code below.
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L805
 
 This `use ...` looks redundant with `log_slow_extra_db = ON`, so I removed it.
@@ -81,18 +85,21 @@ This has the advantage of not changing the format of the log, but makes it
 inconvenient to indicate queries not run in a database (`NoDb`).  The absence of
 a `use ...` could be a synonym for `NoDb`, but I am not sure I like this.
 Anyhow, I might go down the road of always logging `use ...`, my mind is not
-made yet.
+made yet.  Update: I prefer `NoDb` for indicating no schema/database is selected,
+so not going down the `use ...` road.
 
 While working on this, I discovered the
 [mysqldumpslow](https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html)
-utility  unclear what the impact of my work will be on it.
+utility.  Unclear what the impact of my work will be on this utility.
+Update: none, see the section on [Testing mysqldumpslow](#testing-mysqldumpslow).
 
-There are mysql-test about mysqldumpslow, more about this in the section
-[Testing mysqldumpslow](#testing-mysqldumpslow)
-
-While looking a mysqldumpslow, I saw it is  broken with "administrator command",
+While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
 - [Bug#115084i: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
+
+...Testign section to conmplete...
+
+TODO in section [Other Notes](#other-notes)
 
 ...
 
@@ -116,8 +123,6 @@ MariaDB - Slow Query Log Overview:
 
 ### Code Notes
 
-TBC...
-
 write_slow:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L349
 
@@ -130,15 +135,13 @@ File_query_log::write_slow:
 log_slow_extra (Sys_slow_log_extra):
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/sys_vars.cc#L5867
 
-...
-
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 ### Slow Query Log File Examples
 
 Doing this in 8.0 because I want to compare with Percona Server (PS 8.4.0 is not
-out), and in .36 because PS .37 is not out.
+out), and in .36 because PS .37 is not out (well, was not when I did these tests).
 
 From what I see, no change from 8.0 to 8.4.
 
@@ -256,7 +259,7 @@ select * from t;
 
 #### MariaDB 11.3.2
 
-Suppested by Arjen Lentz:
+Suggested by Arjen Lentz:
 - https://www.linkedin.com/feed/update/urn:li:activity:7195819671365771264?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7195819671365771264%2C7195994602758189058%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287195994602758189058%2Curn%3Ali%3Aactivity%3A7195819671365771264%29
 
 ```
@@ -279,7 +282,7 @@ Update for details.
 
 Because I am adding `Db: ...` to the logs, I thought I could get rid of the
 `use ...` line, but this was naive.  Without it, a `use <db>` end-up as a weird
-line in the slow log filei (with `long_query_time = 0`):
+line in the slow query log file (with `long_query_time = 0`):
 ```
 # Time: 2024-05-13T20:22:39.590264Z
 # User@Host: msandbox[msandbox] @ localhost []  Id:    15  Db: test_jfg
@@ -372,7 +375,7 @@ show databases;
 ```
 
 Out of curiosity, I did some code archeology about this `use ...` in the slow query
-log file, it dates back from at least MySQL 3.23 and Jul 31, 2000 (I cannot date
+log file.  It dates back from at least MySQL 3.23 and Jul 31, 2000 (I cannot date
 this exactly as the matching commit is "Import changeset").
 - https://github.com/jfg956/mysql-server/blob/f4c589ff6c653d1d2a09c26e46ead3c8a15655d8/sql/log.cc#L547
 
@@ -382,15 +385,19 @@ this exactly as the matching commit is "Import changeset").
 ### Testing:
 
 mtr tests found related to Slow Query Log:
-- log_slow https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_slow.test
-- log_tables https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_tables.test
-- slow_log (flaky: failed then succeeded) https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/slow_log.test
-- sys_vars.slow_query_log_basic https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_basic.test
-- sys_vars.slow_query_log_file_basic https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_basic.test
-- sys_vars.slow_query_log_func https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func.test
+- [log_slow](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_slow.test)
+- [log_tables](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_tables.test)
+- [slow_log](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/slow_log.test) (flaky: failed then succeeded)
+- [sys_vars.slow_query_log_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_basic.test)
+- [sys_vars.slow_query_log_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func.test)
+- [sys_vars.slow_query_log_func_myisam](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func_myisam.test)
+
+mtr tests found related to Slow Query Log *file*:
+- [sys_vars.slow_query_log_file_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_basic.test)
+- [sys_vars.slow_query_log_file_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_func.test) (in modified below))
 
 mtr test found related to things adjacent to this work:
-- sys_vars.log_slow_extra_basic https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/log_slow_extra_basic.test
+- [sys_vars.log_slow_extra_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/log_slow_extra_basic.test)
 
 mtr test added for this work:
 - [sys_vars.log_slow_extra_db_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
@@ -398,6 +405,7 @@ mtr test added for this work:
 mtr test modified for this work:
 - [sys_vars.slow_query_log_file_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/slow_query_log_file_func.test)
 
+...
 
 ```
 ./mtr --skip-ndb --skip-rpl --force
@@ -425,19 +433,22 @@ TODO: what happen when it is a replication slow log entry (mysql-test/suite/rpl/
 
 TODO: mysql-test/r/persisted_variables_extended
 
+...
+
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 ### Testing mysqldumpslow
 
-Existing test ok (`mysql-test/t/mysqldumpslow.test`):
+Existing test ok:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/mysqldumpslow.test
 ```
-/mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/build/default/mysql-test$ ./mtr mysql-test/t/mysqldumpslow.test
-Logging: /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/mysql-test/mysql-test-run.pl  mysql-test/t/mysqldumpslow.test
+mysql-8.4.0_bug106645/build/default/mysql-test$ ./mtr mysqldumpslow.test
+Logging: /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/mysql-test/mysql-test-run.pl  mysqldumpslow.test
 MySQL Version 8.4.0
 Path length (128) is longer than maximum supported length (108) and will be truncated at /usr/lib/x86_64-linux-gnu/perl-base/Socket.pm line 193.
 Too long tmpdir path '/mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/build/default/mysql-test/var/tmp'  creating a shorter one
- - Using tmpdir: '/tmp/JRmlm2oCkg'
+ - Using tmpdir: '/tmp/N4sOfqdP0b'
 
 Checking supported features
 Using 'all' suites
@@ -451,12 +462,12 @@ Using parallel: 1
 ==============================================================================
                   TEST NAME                       RESULT  TIME (ms) COMMENT
 ------------------------------------------------------------------------------
-[ 50%] main.mysqldumpslow                        [ pass ]     54
-[100%] shutdown_report                           [ pass ]
+[ 50%] main.mysqldumpslow                        [ pass ]     53
+[100%] shutdown_report                           [ pass ]       
 ------------------------------------------------------------------------------
 The servers were restarted 0 times
 The servers were reinitialized 0 times
-Spent 0.054 of 93 seconds executing testcases
+Spent 0.053 of 71 seconds executing testcases
 
 Completed: All 2 tests were successful.
 ```
