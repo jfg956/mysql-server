@@ -413,7 +413,74 @@ mtr tests added for this work:
 mtr test added adjacent to this work (it looks like the right thing to do):
 - [sys_vars.log_slow_extra_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
 
+```
+sql=""
+sql="$sql log_slow"
+sql="$sql log_tables"
+sql="$sql slow_log"
+sql="$sql sys_vars.slow_query_log_basic"
+sql="$sql sys_vars.slow_query_log_func"
+sql="$sql sys_vars.slow_query_log_func_myisam"
+
+sqlf=""
+sqlf="$sqlf sys_vars.slow_query_log_file_basic"
+sqlf="$sqlf sys_vars.slow_query_log_file_func"
+
+lsed="sys_vars.log_slow_extra_db_basic sys_vars.log_slow_extra_db_func"
+lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
+
+./mtr $sql $sqlf $lse $lsed
+[...]
+==============================================================================
+                  TEST NAME                       RESULT  TIME (ms) COMMENT
+------------------------------------------------------------------------------
+[  7%] sys_vars.slow_query_log_func_myisam       [ pass ]  13825
+[ 15%] sys_vars.slow_query_log_file_func         [ pass ]      2
+[ 23%] sys_vars.slow_query_log_file_basic        [ pass ]     35
+[ 30%] main.log_tables                           [ pass ]  60535
+[ 38%] main.log_slow                             [ pass ]     51
+[ 46%] sys_vars.slow_query_log_basic             [ pass ]     30
+[ 53%] sys_vars.slow_query_log_func              [ pass ]   6262
+[ 61%] sys_vars.log_slow_extra_basic             [ pass ]    222
+[ 69%] sys_vars.log_slow_extra_func              [ pass ]   1091
+[ 76%] sys_vars.log_slow_extra_db_basic          [ pass ]     97
+[ 84%] sys_vars.log_slow_extra_db_func           [ pass ]   1037
+[ 92%] main.slow_log                             [ pass ]   2280
+[100%] shutdown_report                           [ pass ]
+------------------------------------------------------------------------------
+[...]
+
+$ ./mtr rpl.rpl_slow_query_log
+[...]
+==============================================================================
+                  TEST NAME                       RESULT  TIME (ms) COMMENT
+------------------------------------------------------------------------------
+[ 25%] rpl.rpl_slow_query_log 'mix'              [ skipped ]  Doesn't support --binlog-format = 'mixed'
+[ 50%] rpl.rpl_slow_query_log 'row'              [ skipped ]  Doesn't support --binlog-format = 'row'
+[ 75%] rpl.rpl_slow_query_log 'stmt'             [ pass ]  46602
+[100%] shutdown_report                           [ pass ]
+------------------------------------------------------------------------------
+[...]
+
 ...
+```
+
+```
+dbdeployer deploy multiple mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
+
+./n1 <<< "RESET BINARY LOGS AND GTIDS"
+./n1 <<< "CREATE USER 'repl'@'%' IDENTIFIED BY 'password'"
+./n1 -u root <<< "GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%'"
+
+# https://bugs.mysql.com/bug.php?id=115179
+
+port=$(./n1 -N <<< "select @@global.port")
+sql="change replication source to SOURCE_HOST='127.0.0.1', SOURCE_PORT=$port, SOURCE_USER='repl', SOURCE_PASSWORD='password', SOURCE_SSL=1; start replica"
+./n2 <<< "$sql"
+./n3 <<< "$sql"
+
+...
+```
 
 ```
 ./mtr --skip-ndb --skip-rpl --force
@@ -436,8 +503,6 @@ mtr test added adjacent to this work (it looks like the right thing to do):
 
 ...
 ```
-
-TODO: what happen when it is a replication slow log entry (mysql-test/suite/rpl/t/rpl_slow_query_log) ?
 
 TODO: mysql-test/r/persisted_variables_extended
 
