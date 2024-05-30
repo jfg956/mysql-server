@@ -97,9 +97,16 @@ While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
 - [Bug#115084i: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
 
-...Testign section to conmplete...
+...Testign section to complete...
 
-TODO in section [Other Notes](#other-notes)
+TODO in section [Other Notes](#other-notes): open a FR to add fields to
+`p_s.events_statements_summary_by_digest`.
+
+TODO: Percona related stuff (suggested by Daniel Black in his
+[comments](https://github.com/jfg956/mysql-server/pull/8#pullrequestreview-2087006510)
+on the work PR):
+- add a [slow log sample](https://github.com/percona/percona-toolkit/tree/3.x/t/lib/samples/slowlogs)
+- adjust [SlowLogParser](https://github.com/percona/percona-toolkit/blob/83ba470afe5008276a7656102b8abe0cf40a31e6/lib/SlowLogParser.pm#L45)
 
 ...
 
