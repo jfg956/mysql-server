@@ -401,16 +401,17 @@ mtr tests found related to Slow Query Log:
 
 mtr tests found related to Slow Query Log *file*:
 - [sys_vars.slow_query_log_file_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_basic.test)
-- [sys_vars.slow_query_log_file_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_func.test) (in modified below))
+- [sys_vars.slow_query_log_file_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_func.test)
 
 mtr test found related to things adjacent to this work:
 - [sys_vars.log_slow_extra_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/log_slow_extra_basic.test)
 
-mtr test added for this work:
+mtr tests added for this work:
 - [sys_vars.log_slow_extra_db_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
+- [sys_vars.log_slow_extra_db_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
 
-mtr test modified for this work:
-- [sys_vars.slow_query_log_file_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/slow_query_log_file_func.test)
+mtr test added adjacent to this work (it looks like the right thing to do):
+- [sys_vars.log_slow_extra_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
 
 ...
 

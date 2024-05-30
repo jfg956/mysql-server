@@ -18,8 +18,7 @@ SET @@global.log_output = 'FILE';
 SET @@global.slow_query_log = ON;
 
 # This needs to go after log_output as it might warn otherwise.
-# Doing tests with log_slow_extra_db = 1 allows not having to manage "use ..." in the output.
-SET @@global.log_slow_extra_db = 1;
+SET @@global.log_slow_extra = 0;
 
 SET @@session.long_query_time = 0.1;
 
@@ -28,19 +27,22 @@ SET @@session.long_query_time = 0.1;
 --let $PATTERN_TCP= /^Tcp port:.*Unix socket:.*\n//
 --let $PATTERN_TIME1= /^Time.*Id.*Command.*Argument.*\n//
 --let $PATTERN_TIME2= /^# Time: .*/# Time: x/
---let $PATTERN_UH= /^# User@Host:.*Id:.*Db:/# User@Host: n Id: n Db:/
+
+# Replacing User@Host by UH as a trick to conserve "Db: ..." when it is there.
+--let $PATTERN_UH1= /^# User@Host:.*Id:.*Db:/# UH: n Id: n Db:/
+--let $PATTERN_UH2= /^# User@Host:.*Id:.*/# UH: n Id: n/
+
 --let $PATTERN_QT= /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/
---let $PATTERN_THREAD= /Thread_id:.*Errno:/Thread_id: n Errno:/
---let $PATTERN_BR= /Bytes_received:.*Bytes_sent:.*Read_first:/Bytes_received: n Bytes_sent: n Read_first:/
---let $PATTERN_START= /Start:.*End:.*/Start: n End: n/
 --let $PATTERN_TS= /SET timestamp=.*\n//
 
---let $PATTERN= $PATTERN_VER $PATTERN_TCP $PATTERN_TIME1 $PATTERN_TIME2 $PATTERN_UH $PATTERN_QT $PATTERN_THREAD $PATTERN_BR $PATTERN_START $PATTERN_TS
+--let $PATTERN= $PATTERN_VER $PATTERN_TCP $PATTERN_TIME1 $PATTERN_TIME2 $PATTERN_UH1 $PATTERN_UH2 $PATTERN_QT $PATTERN_TS
 
 --source include/slow_query_log_file_reset.inc
 
+# We test log_slow_extra_db = 1 before 0 as we want to make sure a "use ..." appears with 0.
+
 --echo
-SET @@global.log_slow_extra = 0;
+SET @@global.log_slow_extra_db = 1;
 SELECT sleep(0.5);
 
 --echo
@@ -50,8 +52,10 @@ SELECT sleep(0.5);
 
 --source include/slow_query_log_file_reset.inc
 
+# As we tested with 1 before, we expect a "use ..." to appear with 0.
+
 --echo
-SET @@global.log_slow_extra = 1;
+SET @@global.log_slow_extra_db = 0;
 SELECT sleep(0.5);
 
 --echo
