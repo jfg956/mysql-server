@@ -99,6 +99,8 @@ which I reported in below.
 
 ...Testign section to complete...
 
+TODO: NoDb expected on replica, but fails !
+
 TODO in section [Other Notes](#other-notes): open a FR to add fields to
 `p_s.events_statements_summary_by_digest`.
 
@@ -446,7 +448,7 @@ lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
 [ 76%] sys_vars.log_slow_extra_db_basic          [ pass ]     97
 [ 84%] sys_vars.log_slow_extra_db_func           [ pass ]   1037
 [ 92%] main.slow_log                             [ pass ]   2280
-[100%] shutdown_report                           [ pass ]
+[100%] shutdown_report                           [ pass ] 
 ------------------------------------------------------------------------------
 [...]
 
@@ -465,6 +467,11 @@ $ ./mtr rpl.rpl_slow_query_log
 ...
 ```
 
+Testing obstacle:
+- dbdeployer does not work with replication and 8.4 [Slack](https://mysqlcommunity.slack.com/archives/C06SQ27S26A/p1717097231526739);
+- [Bug#115179: Replication Setup Documentation missing SOURCE_SSL=1];
+- [Bug#115187: Doc do not mention replacement for RESET MASTER](https://bugs.mysql.com/bug.php?id=115187).
+
 ```
 dbdeployer deploy multiple mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
 
@@ -472,12 +479,111 @@ dbdeployer deploy multiple mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_q
 ./n1 <<< "CREATE USER 'repl'@'%' IDENTIFIED BY 'password'"
 ./n1 -u root <<< "GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%'"
 
-# https://bugs.mysql.com/bug.php?id=115179
-
 port=$(./n1 -N <<< "select @@global.port")
-sql="change replication source to SOURCE_HOST='127.0.0.1', SOURCE_PORT=$port, SOURCE_USER='repl', SOURCE_PASSWORD='password', SOURCE_SSL=1; start replica"
+sql="change replication source to  SOURCE_HOST='127.0.0.1', SOURCE_PORT=$port"
+sql="$sql, SOURCE_USER='repl', SOURCE_PASSWORD='password', SOURCE_SSL=1"
+sql="$sql; start replica"
 ./n2 <<< "$sql"
 ./n3 <<< "$sql"
+
+./n1 <<< "create database test_jfg"
+
+./n2 <<< "stop replica; set global long_query_time = 0; start replica"
+
+# Below leads to no log in n2 because log_slow_replica_statements = OFF.
+./n1 <<< "create database test_jfg2"
+
+./n2 <<< "stop replica; set global long_query_time = 0, log_slow_replica_statements = ON; start replica"
+
+# Now, interestingly, in n2's log, we have below as "Db: test_jfg3", which is surprising.
+# I opened https://bugs.mysql.com/bug.php?id=115189 for this.
+./n1 <<< "create database test_jfg3"
+# Time: 2024-05-31T18:44:45.949441Z
+# User@Host: skip-grants user[] @  []  Id:    28  Db: test_jfg3
+# Query_time: 0.025230  Lock_time: 0.000001 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717181085;
+create database test_jfg3;
+
+# By checking both primary and replica log for below...
+./n1 <<< "set session long_query_time = 0; create database test_jfg4"
+
+# Primary (see "User@Host: msandbox[msandbox] @ localhost []"):
+# Time: 2024-05-31T18:46:25.545533Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    23  NoDb
+# Query_time: 0.026993  Lock_time: 0.000003 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717181185;
+create database test_jfg4;
+
+# Replica (see "User@Host: skip-grants user[] @  []"):
+# Time: 2024-05-31T18:46:25.568899Z
+# User@Host: skip-grants user[] @  []  Id:    28  Db: test_jfg4
+# Query_time: 0.032825  Lock_time: 0.000003 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717181185;
+create database test_jfg4;
+
+./n1 test_jfg <<< "set session long_query_time = 0; create table t(id int)"
+
+# Time: 2024-05-31T18:49:13.686657Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    24  Db: test_jfg
+# Query_time: 0.105483  Lock_time: 0.000020 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717181353;
+create table t(id int);
+
+# Time: 2024-05-31T18:49:13.796389Z
+# User@Host: skip-grants user[] @  []  Id:    28  Db: test_jfg
+# Query_time: 0.114452  Lock_time: 0.000022 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717181353;
+create table t(id int);
+
+# Below leads to no log in n1 nor n2 because  because log_slow_admin_statements = OFF.
+./n1 test_jfg <<< "set session long_query_time = 0; alter table t add column v int"
+
+./n1 <<< "set global log_slow_admin_statements = ON"
+./n2 <<< "stop replica; set global log_slow_admin_statements = ON; start replica"
+
+./n1 test_jfg <<< "set session long_query_time = 0; alter table t add column v2 int"
+
+# Time: 2024-05-31T18:57:03.095269Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    29  Db: test_jfg
+# Query_time: 0.060710  Lock_time: 0.000032 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717181823;
+alter table t add column v2 int;
+
+# Time: 2024-05-31T18:57:03.163122Z
+# User@Host: skip-grants user[] @  []  Id:    43  Db: test_jfg
+# Query_time: 0.087499  Lock_time: 0.000032 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717181823;
+alter table t add column v2 int;
+
+# In a different db.
+./n1 test_jfg2 <<< "set session long_query_time = 0; alter table test_jfg.t add column v3 int"
+
+# Time: 2024-05-31T19:01:48.260787Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    31  Db: test_jfg2
+# Query_time: 0.050964  Lock_time: 0.000029 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717182108;
+alter table test_jfg.t add column v3 int;
+
+# Time: 2024-05-31T19:01:48.330789Z
+# User@Host: skip-grants user[] @  []  Id:    43  Db: test_jfg2
+# Query_time: 0.082760  Lock_time: 0.000029 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717182108;
+alter table test_jfg.t add column v3 int;
+
+# NoDb expected on replica, but fail !
+./n1 <<< "set session long_query_time = 0; create table test_jfg.t2(id int)"
+
+# Time: 2024-05-31T19:56:52.940164Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    32  NoDb
+# Query_time: 0.108686  Lock_time: 0.000019 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717185412;
+create table test_jfg.t2(id int);
+
+# Time: 2024-05-31T19:56:53.100035Z
+# User@Host: skip-grants user[] @  []  Id:    43  Db:
+# Query_time: 0.164766  Lock_time: 0.000021 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717185412;
+create table test_jfg.t2(id int);
 
 ...
 ```
