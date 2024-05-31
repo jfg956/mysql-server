@@ -469,8 +469,13 @@ $ ./mtr rpl.rpl_slow_query_log
 
 Testing obstacle:
 - dbdeployer does not work with replication and 8.4 [Slack](https://mysqlcommunity.slack.com/archives/C06SQ27S26A/p1717097231526739);
-- [Bug#115179: Replication Setup Documentation missing SOURCE_SSL=1];
-- [Bug#115187: Doc do not mention replacement for RESET MASTER](https://bugs.mysql.com/bug.php?id=115187).
+- [Bug#115179: Replication Setup Documentation missing SOURCE_SSL=1](https://bugs.mysql.com/bug.php?id=115179);
+- [Bug#115187: Doc do not mention replacement for RESET MASTER](https://bugs.mysql.com/bug.php?id=115187);
+- ...
+
+Testing surprises:
+- [Bug#115189: P_S Digest table unexpectedly reports created database on replica](https://bugs.mysql.com/bug.php?id=115189);
+- ...
 
 ```
 dbdeployer deploy multiple mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
