@@ -724,7 +724,7 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     } else {
       log_db_change = false;  /* Do not log db change if db is in the comment line. */
       db[0] = 0;  /* Reset db triggers logging db change after disabling log_slow_extra_db. */
-      if (thd->db().str) {
+      if (thd->db().str && thd->db().length > 0) {
         if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, thd->db().str) == (uint)-1)
           goto err;
       } else if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  NoDb\n", user_host, buff) == (uint)-1)
@@ -818,7 +818,10 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
       goto err; /* purecov: inspected */
   }
 
-  if (log_db_change && thd->db().str && strcmp(thd->db().str, db)) {
+  /* For solving ..., we need to add "&& thd->db().length > 0" to below,
+   *   but as this is a different work than addressed by this patch,
+   *   we do not do this here. */
+  if (log_db_change && thd->db().str /*&& thd->db().length > 0*/ && strcmp(thd->db().str, db)) {
     if (my_b_printf(&log_file, "use %s;\n", thd->db().str) == (uint)-1)
       goto err;
     my_stpcpy(db, thd->db().str);

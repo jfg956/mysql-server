@@ -70,6 +70,10 @@ as `Id:`.  So I could change my mind about the name.
 Addition: there is the case where no Db is selected.  In this case, having
 `Db: ...` does not work.  For this, I log `NoDb` instead of `Db: ...`.
 
+Update: instread of using `NoDb`, I could log "Db: " (with the empty-string
+db.  This is what Percona Server and MariaDB are doing, see
+[No Db with PS and MariaDB](#no-db-with-ps-and-mariadb).
+
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Interestingly, while doing this work, I saw that there is a `use ...` logged
@@ -99,8 +103,6 @@ which I reported in below.
 
 ...Testign section to complete...
 
-TODO: NoDb expected on replica, but fails !
-
 TODO in section [Other Notes](#other-notes): open a FR to add fields to
 `p_s.events_statements_summary_by_digest`.
 
@@ -109,6 +111,12 @@ TODO: Percona related stuff (suggested by Daniel Black in his
 on the work PR):
 - add a [slow log sample](https://github.com/percona/percona-toolkit/tree/3.x/t/lib/samples/slowlogs)
 - adjust [SlowLogParser](https://github.com/percona/percona-toolkit/blob/83ba470afe5008276a7656102b8abe0cf40a31e6/lib/SlowLogParser.pm#L45)
+
+TODO: blog and request feedback:
+- always use `use ...` of new field (PS and MariaDB do new field);
+- field name: `Db` or `Schema` (PS and MariaDB use `Schema`);
+- `NoDb` or `Db: ` (PS and MariaDB use `Schema: `);
+- ...
 
 ...
 
@@ -281,6 +289,27 @@ SET timestamp=1715792559;
 select * from t;
 ```
 
+
+#### No Db with PS and MariaDB.
+
+```
+## PS 8.0.36:
+# Time: 2024-06-03T19:33:49.052850Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    10
+# Schema:   Last_errno: 0  Killed: 0
+# Query_time: 0.000057  Lock_time: 0.000000  Rows_sent: 1  Rows_examined: 1  Rows_affected: 0  Bytes_sent: 57
+SET timestamp=1717443229;
+select database();
+
+## MariaDB 11.3.2:
+# Time: 240603 19:37:17
+# User@Host: msandbox[msandbox] @ localhost []
+# Thread_id: 11  Schema:   QC_hit: No
+# Query_time: 0.000074  Lock_time: 0.000000  Rows_sent: 1  Rows_examined: 0
+# Rows_affected: 0  Bytes_sent: 66
+SET timestamp=1717443437;
+select database();
+```
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
@@ -586,6 +615,22 @@ create table test_jfg.t2(id int);
 # Query_time: 0.164766  Lock_time: 0.000021 Rows_sent: 0  Rows_examined: 0
 SET timestamp=1717185412;
 create table test_jfg.t2(id int);
+
+# With fix, starting back from empty db, expected result !
+[...]
+./n1 <<< "create database test_jfg; create table test_jfg.t(id int)"
+./n2 <<< "stop replica; set global long_query_time = 0, log_slow_replica_statements = ON, log_slow_admin_statements = ON; start replica"
+./n1 <<< "alter table test_jfg.t add column v int"
+
+# Time: 2024-06-03T19:25:21.968235Z
+# User@Host: skip-grants user[] @  []  Id:    27  NoDb
+# Query_time: 0.177160  Lock_time: 0.000090 Rows_sent: 0  Rows_examined: 0
+SET timestamp=1717442721;
+alter table test_jfg.t add column v int;
+
+# But this gives me the idea of removing NoDb and putting "Db: " in the file,
+#   not writing anything after "Db: ", which might be nicer.
+# Checking Percona Server and MariaDB, it is how this is set.
 
 ...
 ```
