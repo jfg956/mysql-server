@@ -16,7 +16,7 @@ this change lands in PS without too much complication for Percona.
 Section on [Slow Query Log File Examples](#slow-query-log-file-examples)
 (there are also MariaDB examples in there).
 
-Note: [Bug#106645](https://bugs.mysql.com/bug.php?id=106645
+Note: [Bug#106645](https://bugs.mysql.com/bug.php?id=106645)
 was opened in 2022, but people have been asking for
 database/schema in the Slow Query Log for a long time:
 - This is from 2006: [Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046)
@@ -37,6 +37,16 @@ the change is considered good for everyone (IMHO, it is).
 The name I have in mind for this variable is
 `log_slow_extra_db = { OFF | ON }`.
 
+Update: the `db` column of the `mysql.slow_log` table is a `VARCHAR NOT NULL`
+while `SCHEMA_NAME` in `p_s.events_statements_summary_by_digest` is a
+`VARCHAR DEFAULT NULL`.  So sometimes no schema is stored as `NULL` and
+sometimes as the empty-string.  This leads to weird situations.
+
+Update bis: another weird situation for no schema is that `thd->db().str` is
+sometimes`NULL` and sometime not with `thd->db().length == 0`.  An example
+is that it is `NULL` on the primary and the empty string on replicas for a
+`CREATE TABLE` done in no schema.
+
 Note that a variable to control the output of the slow log is not unheard
 of, we already have
 - [log_slow_admin_statements](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_log_slow_admin_statements)
@@ -48,7 +58,9 @@ of, we already have
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Update: another option that I did not considered initially is to always have
-`use ...` in the slow query log file, see below (TL&DR: I will not do this).
+`use ...` in the slow query log file, see below (TL&DR: I will probably not do
+as no way to set "no schema" with use - it might be missing but I do not want
+to depend on a new feature to finish this work).
 
 Currently, MySQL logs a line like below in the slow query log file.
 ```
@@ -425,11 +437,11 @@ this exactly as the matching commit is "Import changeset").
 mtr tests found related to Slow Query Log:
 - [log_slow](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_slow.test)
 - [log_tables](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_tables.test)
-- [slow_log](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/slow_log.test) (flaky: failed then succeeded)
+- [slow_log](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/slow_log.test) (flaky: failed once, then succeeded many times)
 - [sys_vars.slow_query_log_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_basic.test)
 - [sys_vars.slow_query_log_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func.test)
 - [sys_vars.slow_query_log_func_myisam](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func_myisam.test)
-- [rpl.rpl_slow_query_log](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/rpl/t/rpl_slow_query_log.test) (flaky: failed then succeeded)
+- [rpl.rpl_slow_query_log](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/rpl/t/rpl_slow_query_log.test) (flaky: succeeded a few times, failed once, then succeeded)
 
 mtr tests found related to Slow Query Log *file*:
 - [sys_vars.slow_query_log_file_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_basic.test)
@@ -565,6 +577,9 @@ create table t(id int);
 # Query_time: 0.114452  Lock_time: 0.000022 Rows_sent: 0  Rows_examined: 0
 SET timestamp=1717181353;
 create table t(id int);
+
+# This lead me to open below.
+# Bug#115189: P_S Digest table unexpectedly reports created database on replica: https://bugs.mysql.com/bug.php?id=115189.
 
 # Below leads to no log in n1 nor n2 because because log_slow_admin_statements = OFF.
 ./n1 test_jfg <<< "set session long_query_time = 0; alter table t add column v int"
