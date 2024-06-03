@@ -400,6 +400,7 @@ mtr tests found related to Slow Query Log:
 - [sys_vars.slow_query_log_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_basic.test)
 - [sys_vars.slow_query_log_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func.test)
 - [sys_vars.slow_query_log_func_myisam](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func_myisam.test)
+- [rpl.rpl_slow_query_log](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/rpl/t/rpl_slow_query_log.test) (flaky: failed then succeeded)
 
 mtr tests found related to Slow Query Log *file*:
 - [sys_vars.slow_query_log_file_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_basic.test)
@@ -416,19 +417,23 @@ mtr test added adjacent to this work (it looks like the right thing to do):
 - [sys_vars.log_slow_extra_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
 
 ```
-sql=""
+sql="" # sql: slow query log, naming is sometime confusing ! :-)
 sql="$sql log_slow"
 sql="$sql log_tables"
 sql="$sql slow_log"
 sql="$sql sys_vars.slow_query_log_basic"
 sql="$sql sys_vars.slow_query_log_func"
 sql="$sql sys_vars.slow_query_log_func_myisam"
+sql="$sql "rpl.rpl_slow_query_log
 
-sqlf=""
+sqlf="" # sqlf: slow query log file.
 sqlf="$sqlf sys_vars.slow_query_log_file_basic"
 sqlf="$sqlf sys_vars.slow_query_log_file_func"
 
+# lsed: log_slow_extra_db.
 lsed="sys_vars.log_slow_extra_db_basic sys_vars.log_slow_extra_db_func"
+
+# lse: log_slow_extra.
 lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
 
 ./mtr $sql $sqlf $lse $lsed
@@ -436,30 +441,21 @@ lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
 ==============================================================================
                   TEST NAME                       RESULT  TIME (ms) COMMENT
 ------------------------------------------------------------------------------
-[  7%] sys_vars.slow_query_log_func_myisam       [ pass ]  13825
-[ 15%] sys_vars.slow_query_log_file_func         [ pass ]      2
-[ 23%] sys_vars.slow_query_log_file_basic        [ pass ]     35
-[ 30%] main.log_tables                           [ pass ]  60535
-[ 38%] main.log_slow                             [ pass ]     51
-[ 46%] sys_vars.slow_query_log_basic             [ pass ]     30
-[ 53%] sys_vars.slow_query_log_func              [ pass ]   6262
-[ 61%] sys_vars.log_slow_extra_basic             [ pass ]    222
-[ 69%] sys_vars.log_slow_extra_func              [ pass ]   1091
-[ 76%] sys_vars.log_slow_extra_db_basic          [ pass ]     97
-[ 84%] sys_vars.log_slow_extra_db_func           [ pass ]   1037
-[ 92%] main.slow_log                             [ pass ]   2280
-[100%] shutdown_report                           [ pass ] 
-------------------------------------------------------------------------------
-[...]
-
-$ ./mtr rpl.rpl_slow_query_log
-[...]
-==============================================================================
-                  TEST NAME                       RESULT  TIME (ms) COMMENT
-------------------------------------------------------------------------------
-[ 25%] rpl.rpl_slow_query_log 'mix'              [ skipped ]  Doesn't support --binlog-format = 'mixed'
-[ 50%] rpl.rpl_slow_query_log 'row'              [ skipped ]  Doesn't support --binlog-format = 'row'
-[ 75%] rpl.rpl_slow_query_log 'stmt'             [ pass ]  46602
+[  6%] rpl.rpl_slow_query_log 'mix'              [ skipped ]  Doesn't support --binlog-format = 'mixed'
+[ 12%] rpl.rpl_slow_query_log 'row'              [ skipped ]  Doesn't support --binlog-format = 'row'
+[ 18%] rpl.rpl_slow_query_log 'stmt'             [ pass ]  46205
+[ 25%] sys_vars.slow_query_log_func_myisam       [ pass ]  13883
+[ 31%] sys_vars.slow_query_log_file_func         [ pass ]      1
+[ 37%] sys_vars.slow_query_log_file_basic        [ pass ]     30
+[ 43%] main.log_tables                           [ pass ]  62093
+[ 50%] main.log_slow                             [ pass ]     13
+[ 56%] sys_vars.slow_query_log_basic             [ pass ]     44
+[ 62%] sys_vars.slow_query_log_func              [ pass ]   6295
+[ 68%] sys_vars.log_slow_extra_basic             [ pass ]     20
+[ 75%] sys_vars.log_slow_extra_func              [ pass ]   1089
+[ 81%] sys_vars.log_slow_extra_db_basic          [ pass ]     89
+[ 87%] sys_vars.log_slow_extra_db_func           [ pass ]   1097
+[ 93%] main.slow_log                             [ pass ]   2402
 [100%] shutdown_report                           [ pass ]
 ------------------------------------------------------------------------------
 [...]
@@ -475,6 +471,7 @@ Testing obstacle:
 
 Testing surprises:
 - [Bug#115189: P_S Digest table unexpectedly reports created database on replica](https://bugs.mysql.com/bug.php?id=115189);
+- [Bug#115203: Empty "use ;" on replica in slow query log file](https://bugs.mysql.com/bug.php?id=115203);
 - ...
 
 ```
@@ -540,7 +537,7 @@ create table t(id int);
 SET timestamp=1717181353;
 create table t(id int);
 
-# Below leads to no log in n1 nor n2 because  because log_slow_admin_statements = OFF.
+# Below leads to no log in n1 nor n2 because because log_slow_admin_statements = OFF.
 ./n1 test_jfg <<< "set session long_query_time = 0; alter table t add column v int"
 
 ./n1 <<< "set global log_slow_admin_statements = ON"
