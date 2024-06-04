@@ -113,7 +113,7 @@ While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
 - [Bug#115084i: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
 
-...Testign section to complete...
+...[Testing section](#testing) to complete...
 
 TODO in section [Other Notes](#other-notes): open a FR to add fields to
 `p_s.events_statements_summary_by_digest`.
@@ -457,6 +457,9 @@ mtr tests added for this work:
 mtr test added adjacent to this work (it looks like the right thing to do):
 - [sys_vars.log_slow_extra_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
 
+mtr referencing the slow query log, but not applicable here:
+- [persisted_variables_extended]((https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/persisted_variables_extended.test) (not applicable as no reference to log_slow_extra)
+
 ```
 sql="" # sql: slow query log, naming is sometime confusing ! :-)
 sql="$sql log_slow"
@@ -505,7 +508,7 @@ lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
 ```
 
 Testing obstacle:
-- dbdeployer does not work with replication and 8.4 [Slack](https://mysqlcommunity.slack.com/archives/C06SQ27S26A/p1717097231526739);
+- dbdeployer does not work with replication and 8.4 ([Slack](https://mysqlcommunity.slack.com/archives/C06SQ27S26A/p1717097231526739));
 - [Bug#115179: Replication Setup Documentation missing SOURCE_SSL=1](https://bugs.mysql.com/bug.php?id=115179);
 - [Bug#115187: Doc do not mention replacement for RESET MASTER](https://bugs.mysql.com/bug.php?id=115187);
 - ...
@@ -671,8 +674,6 @@ alter table test_jfg.t add column v int;
 
 ...
 ```
-
-TODO: mysql-test/r/persisted_variables_extended
 
 ...
 
