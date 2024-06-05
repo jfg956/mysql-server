@@ -699,8 +699,8 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
   mysql_mutex_lock(&LOCK_log);
   assert(is_open());
 
-  /* For only logging db changes when db is not in the comment line. */
-  /* With SPECIAL_SHORT_LOG_FORMAT, always log db changes because no comment line. */
+  /* For only logging db changes when db is not in the comment line.
+   * With SPECIAL_SHORT_LOG_FORMAT, always log db changes because no comment line. */
   bool log_db_change = true;
 
   if (!(specialflag & SPECIAL_SHORT_LOG_FORMAT)) {
@@ -714,17 +714,17 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     /* Note that my_b_write() assumes it knows the length for this */
     if (my_b_write(&log_file, (uchar *)buff, buff_len)) goto err;
 
-    /* We could rewrite below to avoid code duplication. */
-    /* This could allow a single my_b_printf, but would prevent code grepping. */
-    /* So we accept code duplication. */
+    /* Below could be rewritten to avoid code duplication.
+     * This could allow a single my_b_printf, but would prevent code grepping.
+     * Allowing grepping is better than avoiding code duplication. */
     buff_len = snprintf(buff, 32, "%5u", thd->thread_id());
     if (!opt_log_slow_extra_db) {
       if (my_b_printf(&log_file, "# User@Host: %s  Id: %s\n", user_host, buff) == (uint)-1)
         goto err;
     } else {
       log_db_change = false;
-      db[0] = 0;  /* Reset db triggers logging db change after disabling log_slow_extra_db. */
-      /* When no schema is selected, str is null on the primary and the empty string on a replica. */
+      db[0] = 0;  /* Resetting db triggers logging db change after disabling log_slow_extra_db. */
+      /* When no schema is selected, str is null on the primary and empty-string on replicas ¯\_(ツ)_/¯. */
       if (thd->db().str && thd->db().length > 0) {
         if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, thd->db().str) == (uint)-1)
           goto err;
@@ -819,9 +819,9 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
       goto err; /* purecov: inspected */
   }
 
-  /* For solving Bug#115203, we would need adding "&& thd->db().length > 0" to below,
-   *   but as this is a different work than addressed by this patch,
-   *   we do not do this here. */
+  /* Adding "&& thd->db().length > 0" would solve Bug#115203,
+   *   but as out of scope of Bug#106645, not done in this patch
+   *    (feel free to fix Bug#115203 before merging this patch). */
   if (log_db_change && thd->db().str /*&& thd->db().length > 0*/ && strcmp(thd->db().str, db)) {
     if (my_b_printf(&log_file, "use %s;\n", thd->db().str) == (uint)-1)
       goto err;
