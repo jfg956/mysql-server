@@ -1,3 +1,5 @@
+# Bug#106645: Slow query log is not logging database/schema name.
+
 ## Save state.
 SET @global_log_output = @@global.log_output;
 SET @global_slow_query_log = @@global.slow_query_log;

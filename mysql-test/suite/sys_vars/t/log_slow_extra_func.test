@@ -1,5 +1,6 @@
-
-let $MYSQLD_DATADIR= `select @@datadir`;
+# This is contributed with Bug#106645, but this still is about WL#12393.
+--echo # WL#12393: Logging: Add new command line option for richer slow query logging
+--echo
 
 --echo ## Save state.
 SET @global_log_output = @@global.log_output;
@@ -10,6 +11,8 @@ SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
 
 --echo
 --echo ## Common to all tests below.
+
+let $MYSQLD_DATADIR= `select @@datadir`;
 
 # Setting slow_query_log_file before enabling the slow log to avoid creating a random file.
 SET @@global.slow_query_log_file = 'my_slow_test.log';

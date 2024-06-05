@@ -1,3 +1,5 @@
+# WL#12393: Logging: Add new command line option for richer slow query logging
+
 ## Save state.
 SET @global_log_output = @@global.log_output;
 SET @global_slow_query_log = @@global.slow_query_log;

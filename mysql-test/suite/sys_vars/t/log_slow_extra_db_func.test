@@ -1,5 +1,5 @@
-
-let $MYSQLD_DATADIR= `select @@datadir`;
+--echo # Bug#106645: Slow query log is not logging database/schema name.
+--echo
 
 --echo ## Save state.
 SET @global_log_output = @@global.log_output;
@@ -10,6 +10,8 @@ SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
 
 --echo
 --echo ## Common to all tests below.
+
+let $MYSQLD_DATADIR= `select @@datadir`;
 
 # Setting slow_query_log_file before enabling the slow log to avoid creating a random file.
 SET @@global.slow_query_log_file = 'my_slow_test.log';
