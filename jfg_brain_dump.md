@@ -1,8 +1,7 @@
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-We would like to fix [Bug#91737](https://bugs.mysql.com/bug.php?id=91737):
-Please log GTID_EXECUTED when running RESET MASTER.
+We would like to fix [Bug#91737: Please log GTID_EXECUTED when running RESET MASTER](https://bugs.mysql.com/bug.php?id=91737).
 
 ### Exlploration from Bug Report:
 
