@@ -1198,6 +1198,7 @@ void kill_zombie_dump_threads(THD *thd) {
 */
 bool reset_binary_logs_and_gtids(THD *thd, bool unlock_global_read_lock) {
   bool ret = false;
+  char *previous_gtid_executed = nullptr, *current_gtid_executed = nullptr;
 
   /*
     RESET BINARY LOGS AND GTIDS command should ignore 'read-only' and
@@ -1220,6 +1221,8 @@ bool reset_binary_logs_and_gtids(THD *thd, bool unlock_global_read_lock) {
     goto end;
   }
 
+  gtid_state->get_executed_gtids()->to_string(&previous_gtid_executed);
+
   if (mysql_bin_log.is_open()) {
     /*
       mysql_bin_log.reset_logs will delete the binary logs *and* clear
@@ -1238,6 +1241,14 @@ bool reset_binary_logs_and_gtids(THD *thd, bool unlock_global_read_lock) {
     ret = (gtid_state->clear(thd) != 0);
     global_tsid_lock->unlock();
   }
+
+  gtid_state->get_executed_gtids()->to_string(&current_gtid_executed);
+
+  LogErr(SYSTEM_LEVEL, ER_GTID_EXECUTED_WAS_UPDATED, previous_gtid_executed,
+         current_gtid_executed);
+
+  my_free(current_gtid_executed);
+  my_free(previous_gtid_executed);
 
 end:
   /*
