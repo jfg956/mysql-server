@@ -2,8 +2,7 @@
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 I would like to implement (not fix, because it is a feature request)
-[Bug#106645](https://bugs.mysql.com/bug.php?id=106645):
-Slow query log is not logging database/schema name.
+[Bug#106645i: low query log is not logging database/schema name](https://bugs.mysql.com/bug.php?id=106645).
 
 This improvement was suggested to me (JFG) by a colleague (voluntarily
 holding details to avoid exposing internal Aiven politics in public GitHub).
@@ -19,7 +18,7 @@ Section on [Slow Query Log File Examples](#slow-query-log-file-examples)
 Note: [Bug#106645](https://bugs.mysql.com/bug.php?id=106645)
 was opened in 2022, but people have been asking for
 database/schema in the Slow Query Log for a long time:
-- This is from 2006: [Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046)
+- This is from 2006: [Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046).
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
@@ -652,29 +651,6 @@ alter table test_jfg.t add column v int;
 
 ...
 ```
-
-```
-./mtr --skip-ndb --skip-rpl --force
-
-# Using suite(s):
-#   auth_sec,binlog,binlog_gtid,binlog_nogtid,clone,collations,component_keyring_file,
-#   connection_control,encryption,federated,funcs_2,gcol,gis,information_schema,innodb,innodb_fts,innodb_gis,
-#   innodb_undo,innodb_zip,interactive_utilities,json,main,opt_trace,parts,perfschema,query_rewrite_plugins,
-#   rpl,rpl_gtid,rpl_nogtid,secondary_engine,service_status_var_registration,service_sys_var_registration,
-#   service_udf_registration,sys_vars,sysschema,test_service_sql_api,test_services,x
-
-# could skip:
-# - binlog_gtid.*
-# - binlog_nogtid.*
-# - component_keyring_file.*
-# - clone.*
-# - secondary_engine.*
-# - x.*
-# - ...
-
-...
-```
-
 ...
 
 
