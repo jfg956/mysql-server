@@ -11,43 +11,46 @@ While starting to work on this, I found there was a public FR on the subject.
 This colleague told me Percona Server has this feature.  I will refrain from
 checking PS code, but I will allow myself to check PS behavior to make sure
 this change lands in PS without too much complication for Percona.
-
-Section on [Slow Query Log File Examples](#slow-query-log-file-examples)
-(there are also MariaDB examples in there).
+The section on [Slow Query Log File Examples](#slow-query-log-file-examples)
+contains MySQL, Percona Server and MariaDB samples.
 
 Note: [Bug#106645](https://bugs.mysql.com/bug.php?id=106645)
 was opened in 2022, but people have been asking for
-database/schema in the Slow Query Log for a long time:
-- This is from 2006: [Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046).
+this feature for a long time.  This is from 2006:
+[Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046).
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-As mentioned in the public FR
+As mentioned in the public bug report / feature request
 ([Bug#106645](https://bugs.mysql.com/bug.php?id=106645)), the `mysql.slow_log`
-table already includes a `db` column, so adding database/schema to
-the slow query log file should
-not be too complicated.  The marginal additional complexity is
-making sure this change does not break existing tooling parsing the slow query log
-file.  A way
-to achieve this is to put this change behind a feature flag / global
+table already includes a `db` column, so it to the file should
+not be too complicated.  The marginal additional complexity will be in
+making sure this change does not break existing tooling parsing the file.  A way
+to achieve this is to put the change behind a feature flag / global
 variable.  This also allows back-porting this change in 8.0 and 8.4 (with
 the default to OFF).  Eventually, this global variable could be deprecated if
-the change is considered good for everyone (IMHO, it is).
+the change is considered good for everyone (IMHO, it is), but the removal should
+wait to leave time to adjust slow query log file parsing.  To speed-up removal,
+the variable could be introduced as deprecated with the default to ON.
 The name I have in mind for this variable is
 `log_slow_extra_db = { OFF | ON }`.
 
 Update: the `db` column of the `mysql.slow_log` table is a `VARCHAR NOT NULL`
 while `SCHEMA_NAME` in `p_s.events_statements_summary_by_digest` is a
-`VARCHAR DEFAULT NULL`.  So sometimes no schema is stored as `NULL` and
-sometimes as the empty-string.  This leads to weird situations.
+`VARCHAR DEFAULT NULL`.  So at some places,  no schema is stored as `NULL` and
+at others as the empty-string.  This leads to weird situations.
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Update bis: another weird situation for no schema is that `thd->db().str` is
-sometimes`NULL` and sometime not with `thd->db().length == 0`.  An example
-is that it is `NULL` on the primary and the empty string on replicas for a
-`CREATE TABLE` done in no schema.
+sometimes `NULL` and sometime not with `thd->db().length == 0`.  This makes
+no schema represented as 2 states: `NULL` and the empty-string.  An example
+is that, for a `CREATE TABLE` done in no schema, it is `NULL` on the primary
+and the empty-string on replicas (see
+[Bug#115203](https://bugs.mysql.com/bug.php?id=115203) for details).
 
 Note that a variable to control the output of the slow log is not unheard
-of, we already have
+of, we already have:
 - [log_slow_admin_statements](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_log_slow_admin_statements)
 - [log_slow_extra](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_log_slow_extra)
 - [log_slow_replica_statements](https://dev.mysql.com/doc/refman/8.4/en/replication-options-replica.html#sysvar_log_slow_replica_statements)
@@ -56,24 +59,23 @@ of, we already have
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-Update: another option that I did not considered initially is to always have
-`use ...` in the slow query log file, see below (TL&DR: I will probably not do
-as no way to set "no schema" with use - it might be missing but I do not want
-to depend on a new feature to finish this work).
-
 Currently, MySQL logs a line like below in the slow query log file.
 ```
 # User@Host: msandbox[msandbox] @ localhost []  Id:    12
 ```
 
-What I have in mind is, when `log_slow_extra_db` is `ON`, to change above for below
+What I have in mind, when `log_slow_extra_db` is `ON`, is to change above for below
 (see `Db: ...` at the end of the line).
 ```
 # User@Host: msandbox[msandbox] @ localhost []  Id:    12  Db: test_jfg
 ```
 
+Update: another option that I did not considered initially is to always have
+`use ...` in the slow query log file, see below (TL&DR: I will probably not do
+this).
+
 I could use `Schema:` instead of `Db:`, but this would not match the content
-of the `mysql.slow_log` table, even though it would partially match the content of
+of the `mysql.slow_log` table, even though it would partially match
 `performance_schema.events_statements_summary_by_digest` (`SCHEMA_NAME`).  Not
 matching `mysql.slow_log` is not unheard of, `mysql.slow_log.thread_id` is logged
 as `Id:`.  So I could change my mind about the name.
@@ -82,7 +84,7 @@ Addition: there is the case where no Db is selected.  In this case, having
 `Db: ...` does not work.  For this, I log `NoDb` instead of `Db: ...`.
 
 Update: instread of using `NoDb`, I could log "Db: " (with the empty-string
-db.  This is what Percona Server and MariaDB are doing, see
+db).  This is what Percona Server and MariaDB are doing, see
 [No Db with PS and MariaDB](#no-db-with-ps-and-mariadb).
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -97,22 +99,30 @@ It lead to some rabbit-holing, see details in
 
 Update: instead of removing the `use ...`, we could embrace it and always log it.
 This has the advantage of not changing the format of the log, but makes it
-inconvenient to indicate queries not run in a database (`NoDb`).  The absence of
+inconvenient to indicate queries not run in a database (`NoDb`).  From what I
+know, there is no way, via a `use` command, to reset the current schema.  This
+might be missing, but I will not, at least for now, start developping this
+feature.  The absence of
 a `use ...` could be a synonym for `NoDb`, but I am not sure I like this.
 Anyhow, I might go down the road of always logging `use ...`, my mind is not
-made yet.  Update: I prefer `NoDb` for indicating no schema/database is selected,
-so not going down the `use ...` road.
+made yet.  Update: I prefer `NoDb` for indicating no schema/database is selected
+(of the empty-string `Db: `), so not going down the `use ...` road.
 
 While working on this, I discovered the
 [mysqldumpslow](https://dev.mysql.com/doc/refman/8.4/en/mysqldumpslow.html)
 utility.  Unclear what the impact of my work will be on this utility.
 Update: none, see the section on [Testing mysqldumpslow](#testing-mysqldumpslow).
 
+I am not updating mysqldumpslow to add the feature of parsing database / schema
+in the slow query log file.  The current behavior of the tool is to aggregate
+similar queries in different schemas, so making the tool scheam-aware would
+be a bigger change than what I think should be allocated to this.
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
 While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
 - [Bug#115084i: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
-
-...[Testing section](#testing) to complete...
 
 TODO in section [Other Notes](#other-notes): open a FR to add fields to
 `p_s.events_statements_summary_by_digest`.
@@ -129,12 +139,10 @@ TODO: blog and request feedback:
 - `NoDb` or `Db: ` (PS and MariaDB use `Schema: `);
 - ...
 
-...
-
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-### Doc links
+### Doc Links
 
 MySQL - The Slow Query log:
 - 8.0: https://dev.mysql.com/doc/refman/8.0/en/slow-query-log.html
@@ -169,7 +177,8 @@ log_slow_extra (Sys_slow_log_extra):
 ### Slow Query Log File Examples
 
 Doing this in 8.0 because I want to compare with Percona Server (PS 8.4.0 is not
-out), and in .36 because PS .37 is not out (well, was not when I did these tests).
+out at the time of doing this), and in .36 because PS .37 is not out (well, was
+not when I did these tests).
 
 From what I see, no change from 8.0 to 8.4.
 
@@ -225,7 +234,7 @@ select * from t;
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 With `log_slow_verbosity = full` and `log_slow_extra = OFF`: back at PS style
-(with `Schema: ...`) !
+(with `Schema: ...`).
 ```
 # Time: 2024-05-10T17:52:26.336958Z
 # User@Host: msandbox[msandbox] @ localhost []  Id:    13
@@ -243,7 +252,7 @@ select * from t;
 ```
 
 With `log_slow_verbosity = full` and `log_slow_extra = ON`: back at MySQL
-stlye (`Schema: ...` gone) !
+stlye (`Schema: ...` gone).
 ```
 # Time: 2024-05-10T17:53:53.210758Z
 # User@Host: msandbox[msandbox] @ localhost []  Id:    14
@@ -287,8 +296,8 @@ select * from t;
 
 #### MariaDB 11.3.2
 
-Suggested by Arjen Lentz:
-- https://www.linkedin.com/feed/update/urn:li:activity:7195819671365771264?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7195819671365771264%2C7195994602758189058%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287195994602758189058%2Curn%3Ali%3Aactivity%3A7195819671365771264%29
+Suggested by Arjen Lentz on 
+[LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7195819671365771264?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7195819671365771264%2C7195994602758189058%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287195994602758189058%2Curn%3Ali%3Aactivity%3A7195819671365771264%29).
 
 ```
 # Time: 240515 17:02:39
@@ -301,7 +310,7 @@ select * from t;
 ```
 
 
-#### No Db with PS and MariaDB.
+#### No Db with PS and MariaDB
 
 ```
 ## PS 8.0.36:
@@ -457,7 +466,12 @@ mtr test added adjacent to this work (it looks like the right thing to do):
 - [sys_vars.log_slow_extra_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
 
 mtr referencing the slow query log, but not applicable here:
-- [persisted_variables_extended]((https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/persisted_variables_extended.test) (not applicable as no reference to log_slow_extra)
+- [persisted_variables_extended](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/persisted_variables_extended.test) (not applicable as no reference to log_slow_extra)
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### Testing script with mtr
 
 ```
 sql="" # sql: slow query log, naming is sometime confusing ! :-)
@@ -502,20 +516,31 @@ lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
 [100%] shutdown_report                           [ pass ]
 ------------------------------------------------------------------------------
 [...]
-
-...
 ```
 
-Testing obstacle:
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### Testing obstacles
+
 - dbdeployer does not work with replication and 8.4 ([Slack](https://mysqlcommunity.slack.com/archives/C06SQ27S26A/p1717097231526739));
 - [Bug#115179: Replication Setup Documentation missing SOURCE_SSL=1](https://bugs.mysql.com/bug.php?id=115179);
 - [Bug#115187: Doc do not mention replacement for RESET MASTER](https://bugs.mysql.com/bug.php?id=115187);
-- ...
 
-Testing surprises:
+
+#### Testing surprises
 - [Bug#115189: P_S Digest table unexpectedly reports created database on replica](https://bugs.mysql.com/bug.php?id=115189);
 - [Bug#115203: Empty "use ;" on replica in slow query log file](https://bugs.mysql.com/bug.php?id=115203);
-- ...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### Testing with replication
+
+I could try writting a mtr test inspired on
+`rpl.rpl_slow_query_log`, but it would additional work and as there does not look
+to be mtr tests in the `rpl*` suites on the Slow Query Log **File**, it would
+be a big gap to fill.
 
 ```
 dbdeployer deploy multiple mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
@@ -648,46 +673,24 @@ alter table test_jfg.t add column v int;
 # But this gives me the idea of removing NoDb and putting "Db: " in the file,
 #   not writing anything after "Db: ", which might be nicer.
 # Checking Percona Server and MariaDB, it is how this is set.
-
-...
 ```
-...
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 ### Testing mysqldumpslow
 
-Existing test ok:
-- https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/mysqldumpslow.test
+Existing test ([mysqldumpslow](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/mysqldumpslow.test)) ok:
 ```
-mysql-8.4.0_bug106645/build/default/mysql-test$ ./mtr mysqldumpslow.test
-Logging: /mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/mysql-test/mysql-test-run.pl  mysqldumpslow.test
-MySQL Version 8.4.0
-Path length (128) is longer than maximum supported length (108) and will be truncated at /usr/lib/x86_64-linux-gnu/perl-base/Socket.pm line 193.
-Too long tmpdir path '/mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/build/default/mysql-test/var/tmp'  creating a shorter one
- - Using tmpdir: '/tmp/N4sOfqdP0b'
-
-Checking supported features
-Using 'all' suites
-Collecting tests
-Checking leftover processes
-Removing old var directory
-Creating var directory '/mnt/jgagne_src/github/https/jfg956/mysql-server/worktrees/mysql-8.4.0_bug106645/build/default/mysql-test/var'
-Installing system database
-Using parallel: 1
-
+./mtr mysqldumpslow.test
+[...]
 ==============================================================================
                   TEST NAME                       RESULT  TIME (ms) COMMENT
 ------------------------------------------------------------------------------
 [ 50%] main.mysqldumpslow                        [ pass ]     53
 [100%] shutdown_report                           [ pass ]       
 ------------------------------------------------------------------------------
-The servers were restarted 0 times
-The servers were reinitialized 0 times
-Spent 0.053 of 71 seconds executing testcases
-
-Completed: All 2 tests were successful.
+[...]
 ```
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -747,7 +750,7 @@ This working was expected as extra data at the end of the `User` line is ignored
 ### Other Notes
 
 While preparing this work, I saw that Percona Server has `Rows_affected` in its
-slow log file output (MySQL does not).  I opened a feature request for this,
+slow query log file (MySQL does not).  I opened a feature request for this,
 framing it in such a way that it does not read "please implement this feature
 from Percona".  ;-)
 - [Bug#114961: Please consider adding fields to log_slow_extra](https://bugs.mysql.com/bug.php?id=114961)
@@ -762,7 +765,8 @@ Interstingly, while doing this work, I discovered the `log-short-format` option:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L702
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/mysqld.cc#L12718
 
-...
+Other interesting notes in [Testing obstacles](#Testing obstacles) and
+[Testing surprises](#Testing surprises).
 
 
 <!-- EOF -->
