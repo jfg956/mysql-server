@@ -765,8 +765,8 @@ Interstingly, while doing this work, I discovered the `log-short-format` option:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L702
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/mysqld.cc#L12718
 
-Other interesting notes in [Testing obstacles](#Testing obstacles) and
-[Testing surprises](#Testing surprises).
+Other interesting notes in [Testing obstacles](#testing-obstacles) and
+[Testing surprises](#testing-surprises).
 
 
 <!-- EOF -->
