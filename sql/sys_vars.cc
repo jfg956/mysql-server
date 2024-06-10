@@ -5854,6 +5854,9 @@ static Sys_var_bool Sys_slow_query_log(
     NOT_IN_BINLOG, ON_CHECK(nullptr), ON_UPDATE(fix_slow_log_state));
 
 static bool check_slow_log_extra(sys_var *, THD *thd, set_var *) {
+  /* This function is called by check_slow_log_extra_db.  If something specific
+   *   to slow_log_extra (not slow_log_extra_db) is added here, consider
+   *   updating check_slow_log_extra_db. */
   // If FILE is not one of the log-targets, succeed but warn!
   if (!(log_output_options & LOG_FILE))
     push_warning(
@@ -5870,6 +5873,19 @@ static Sys_var_bool Sys_slow_log_extra(
     "logging to table.",
     GLOBAL_VAR(opt_log_slow_extra), CMD_LINE(OPT_ARG), DEFAULT(false),
     NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(check_slow_log_extra),
+    ON_UPDATE(nullptr));
+
+static bool check_slow_log_extra_db(sys_var * sysv, THD *thd, set_var * setv) {
+  /* Exactly the same as check_slow_log_extra, let's not duplicate code. */
+  return check_slow_log_extra(sysv, thd, setv);
+}
+
+static Sys_var_bool Sys_slow_log_extra_db(
+    "log_slow_extra_db",
+    "Print db to the slow query log file. Has no effect on "
+    "logging to table.",
+    GLOBAL_VAR(opt_log_slow_extra_db), CMD_LINE(OPT_ARG), DEFAULT(true),
+    NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(check_slow_log_extra_db),
     ON_UPDATE(nullptr));
 
 static bool check_not_empty_set(sys_var *, THD *, set_var *var) {

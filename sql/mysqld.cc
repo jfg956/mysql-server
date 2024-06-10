@@ -1200,6 +1200,7 @@ ulonglong log_output_options;
 bool opt_log_queries_not_using_indexes = false;
 ulong opt_log_throttle_queries_not_using_indexes = 0;
 bool opt_log_slow_extra = false;
+bool opt_log_slow_extra_db = true;
 bool opt_disable_networking = false, opt_skip_show_db = false;
 bool opt_skip_name_resolve = false;
 bool server_id_supplied = false;
