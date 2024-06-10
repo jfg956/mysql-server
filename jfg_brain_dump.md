@@ -15,7 +15,7 @@ The section on [Slow Query Log File Examples](#slow-query-log-file-examples)
 contains MySQL, Percona Server and MariaDB samples.
 
 Note: [Bug#106645](https://bugs.mysql.com/bug.php?id=106645)
-was opened in 2022, but people have been asking for
+was open in 2022, but people have been asking for
 this feature for a long time.  This is from 2006:
 [Bug#19046: slow query log should include the affected database](https://bugs.mysql.com/bug.php?id=19046).
 
@@ -30,7 +30,7 @@ to achieve this is to put the change behind a feature flag / global
 variable.  This also allows back-porting this change in 8.0 and 8.4 (with
 the default to OFF).  Eventually, this global variable could be deprecated if
 the change is considered good for everyone (IMHO, it is), but the removal should
-wait to leave time to adjust slow query log file parsing.  To speed-up removal,
+wait to leave time to adjust slow query log file parsing.  To speed up removal,
 the variable could be introduced as deprecated with the default to ON.
 The name I have in mind for this variable is
 `log_slow_extra_db = { OFF | ON }`.
@@ -70,7 +70,7 @@ What I have in mind, when `log_slow_extra_db` is `ON`, is to change above for be
 # User@Host: msandbox[msandbox] @ localhost []  Id:    12  Db: test_jfg
 ```
 
-Update: another option that I did not considered initially is to always have
+Update: another option that I did not consider initially is to always have
 `use ...` in the slow query log file, see below (TL&DR: I will probably not do
 this).
 
@@ -83,7 +83,7 @@ as `Id:`.  So I could change my mind about the name.
 Addition: there is the case where no Db is selected.  In this case, having
 `Db: ...` does not work.  For this, I log `NoDb` instead of `Db: ...`.
 
-Update: instread of using `NoDb`, I could log "Db: " (with the empty-string
+Update: instead of using `NoDb`, I could log "Db: " (with the empty-string
 db).  This is what Percona Server and MariaDB are doing, see
 [No Db with PS and MariaDB](#no-db-with-ps-and-mariadb).
 
@@ -94,14 +94,14 @@ with the 1st slow log entry in a different db, link to the code below.
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L805
 
 This `use ...` looks redundant with `log_slow_extra_db = ON`, so I removed it.
-It lead to some rabbit-holing, see details in
+It led to some rabbit-holing, see details in
 [Slow Query Log File contains use](#slow-query-log-file-contains-use).
 
 Update: instead of removing the `use ...`, we could embrace it and always log it.
 This has the advantage of not changing the format of the log, but makes it
 inconvenient to indicate queries not run in a database (`NoDb`).  From what I
 know, there is no way, via a `use` command, to reset the current schema.  This
-might be missing, but I will not, at least for now, start developping this
+might be missing, but I will not, at least for now, start developing this
 feature.  The absence of
 a `use ...` could be a synonym for `NoDb`, but I am not sure I like this.
 Anyhow, I might go down the road of always logging `use ...`, my mind is not
@@ -115,7 +115,7 @@ Update: none, see the section on [Testing mysqldumpslow](#testing-mysqldumpslow)
 
 I am not updating mysqldumpslow to add the feature of parsing database / schema
 in the slow query log file.  The current behavior of the tool is to aggregate
-similar queries in different schemas, so making the tool scheam-aware would
+similar queries in different schemas, so making the tool schema-aware would
 be a bigger change than what I think should be allocated to this.
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -252,7 +252,7 @@ select * from t;
 ```
 
 With `log_slow_verbosity = full` and `log_slow_extra = ON`: back at MySQL
-stlye (`Schema: ...` gone).
+style (`Schema: ...` gone).
 ```
 # Time: 2024-05-10T17:53:53.210758Z
 # User@Host: msandbox[msandbox] @ localhost []  Id:    14
@@ -339,7 +339,7 @@ Update: I can get rid of the `use ...`, below analysis was wrong, goto next
 Update for details.
 
 Because I am adding `Db: ...` to the logs, I thought I could get rid of the
-`use ...` line, but this was naive.  Without it, a `use <db>` end-up as a weird
+`use ...` line, but this was naive.  Without it, a `use <db>` ends-up as a weird
 line in the slow query log file (with `long_query_time = 0`):
 ```
 # Time: 2024-05-13T20:22:39.590264Z
@@ -386,8 +386,7 @@ Doc on COM_INIT_DB:
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-Update: above was a wrong analysis, I missed the fact the there was another
-important line
+Update: above was a wrong analysis, I missed that there was another important line
 in the logs after the use: `# administrator command: ...`.  Below are complete
 slow query log file examples.
 
@@ -442,7 +441,7 @@ this exactly as the matching commit is "Import changeset").
 
 ### Testing:
 
-mtr tests found related to Slow Query Log:
+mtr tests found related to the Slow Query Log:
 - [log_slow](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_slow.test)
 - [log_tables](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/log_tables.test)
 - [slow_log](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/slow_log.test) (flaky: failed once, then succeeded many times)
@@ -451,7 +450,7 @@ mtr tests found related to Slow Query Log:
 - [sys_vars.slow_query_log_func_myisam](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_func_myisam.test)
 - [rpl.rpl_slow_query_log](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/rpl/t/rpl_slow_query_log.test) (flaky: succeeded a few times, failed once, then succeeded)
 
-mtr tests found related to Slow Query Log *file*:
+mtr tests found related to the Slow Query Log *file*:
 - [sys_vars.slow_query_log_file_basic](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_basic.test)
 - [sys_vars.slow_query_log_file_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/suite/sys_vars/t/slow_query_log_file_func.test)
 
@@ -466,7 +465,7 @@ mtr test added adjacent to this work (it looks like the right thing to do):
 - [sys_vars.log_slow_extra_func](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/mysql-test/suite/sys_vars/t/log_slow_extra_db_basic.test)
 
 mtr referencing the slow query log, but not applicable here:
-- [persisted_variables_extended](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/persisted_variables_extended.test) (not applicable as no reference to log_slow_extra)
+- [persisted_variables_extended](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/persisted_variables_extended.test) (not applicable because no reference to log_slow_extra)
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -474,7 +473,7 @@ mtr referencing the slow query log, but not applicable here:
 #### Testing script with mtr
 
 ```
-sql="" # sql: slow query log, naming is sometime confusing ! :-)
+sql="" # sql: slow query log, naming is sometimes confusing ! :-)
 sql="$sql log_slow"
 sql="$sql log_tables"
 sql="$sql slow_log"
@@ -605,7 +604,7 @@ create table t(id int);
 SET timestamp=1717181353;
 create table t(id int);
 
-# This lead me to open below.
+# This led me to open below.
 # Bug#115189: P_S Digest table unexpectedly reports created database on replica: https://bugs.mysql.com/bug.php?id=115189.
 
 # Below leads to no log in n1 nor n2 because because log_slow_admin_statements = OFF.
@@ -760,13 +759,21 @@ TODO: open a FR to add fields to
 - Bytes_received and Bytes_sent;
 - Read_first, Read_last, Read_key, Read_next, Read_prev, Read_rnd and Read_rnd_next.
 
-Interstingly, while doing this work, I discovered the `log-short-format` option:
+Interestingly, while doing this work, I discovered the `log-short-format` option:
 - https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_log-short-format
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/log.cc#L702
 - https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/sql/mysqld.cc#L12718
 
 Other interesting notes in [Testing obstacles](#testing-obstacles) and
 [Testing surprises](#testing-surprises).
+
+Modified files:
+```
+f="$(echo sql/{{log,mysqld,sys_vars}.cc,mysqld.h})"
+f="$f mysql-test/include/slow_query_log_file_reset.inc"
+f="$f $(echo mysql-test/suite/sys_vars/{t/log_slow_extra_db_basic.test,r/log_slow_extra_db_basic.result})"
+f="$f $(echo mysql-test/suite/sys_vars/{t/log_slow_extra{,_db}_func.test,r/log_slow_extra{,_db}_func.result})"
+```
 
 
 <!-- EOF -->
