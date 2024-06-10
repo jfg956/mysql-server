@@ -1,0 +1,48 @@
+# WL#12393: Logging: Add new command line option for richer slow query logging
+
+## Save state.
+SET @global_log_output = @@global.log_output;
+SET @global_slow_query_log = @@global.slow_query_log;
+SET @global_slow_query_log_file = @@global.slow_query_log_file;
+SET @global_log_slow_extra = @@global.log_slow_extra;
+SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
+
+## Common to all tests below.
+SET @@global.slow_query_log_file = 'my_slow_test.log';
+SET @@global.log_output = 'FILE';
+SET @@global.slow_query_log = ON;
+SET @@global.log_slow_extra_db = 1;
+SET @@session.long_query_time = 0.1;
+
+## Resetting the slow query log file.
+FLUSH SLOW LOGS;
+
+SET @@global.log_slow_extra = 0;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+# Time: x
+# User@Host: n Id: n Db: test
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1
+SELECT sleep(0.5);
+
+## Resetting the slow query log file.
+FLUSH SLOW LOGS;
+
+SET @@global.log_slow_extra = 1;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+# Time: x
+# User@Host: n Id: n Db: test
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1 Thread_id: n Errno: 0 Killed: 0 Bytes_received: n Bytes_sent: n Read_first: 0 Read_last: 0 Read_key: 0 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 0 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: n End: n
+SELECT sleep(0.5);
+
+## Restore state.
+SET @@global.log_slow_extra = @global_log_slow_extra;
+SET @@global.log_slow_extra_db = @global_log_slow_extra_db;
+SET @@global.log_output = @global_log_output;
+SET @@global.slow_query_log = @global_slow_query_log;
+SET @@global.slow_query_log_file = @global_slow_query_log_file;
