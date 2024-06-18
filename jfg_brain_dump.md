@@ -122,10 +122,7 @@ be a bigger change than what I think should be allocated to this.
 
 While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
-- [Bug#115084i: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
-
-TODO in section [Other Notes](#other-notes): open a FR to add fields to
-`p_s.events_statements_summary_by_digest`.
+- [Bug#115084: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
 
 TODO: Percona related stuff (suggested by Daniel Black in his
 [comments](https://github.com/jfg956/mysql-server/pull/8#pullrequestreview-2087006510)
@@ -748,10 +745,9 @@ framing it in such a way that it does not read "please implement this feature
 from Percona".  ;-)
 - [Bug#114961: Please consider adding fields to log_slow_extra](https://bugs.mysql.com/bug.php?id=114961)
 
-TODO: open a FR to add fields to
-`performance_schema.events_statements_summary_by_digest`:
-- Bytes_received and Bytes_sent;
-- Read_first, Read_last, Read_key, Read_next, Read_prev, Read_rnd and Read_rnd_next.
+While doing this work, I realized that log_slow_extra put fieds in the slow
+query log file that are not in the P_S "digest" table, so I opened below:
+- [Bug #115372	Please consider adding fields to P_S "Digest" table](https://bugs.mysql.com/bug.php?id=115372).
 
 Interestingly, while doing this work, I discovered the `log-short-format` option:
 - https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_log-short-format
