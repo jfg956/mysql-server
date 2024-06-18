@@ -133,12 +133,6 @@ on the work PR):
 - add a [slow log sample](https://github.com/percona/percona-toolkit/tree/3.x/t/lib/samples/slowlogs)
 - adjust [SlowLogParser](https://github.com/percona/percona-toolkit/blob/83ba470afe5008276a7656102b8abe0cf40a31e6/lib/SlowLogParser.pm#L45)
 
-TODO: blog and request feedback:
-- always use `use ...` of new field (PS and MariaDB do new field);
-- field name: `Db` or `Schema` (PS and MariaDB use `Schema`);
-- `NoDb` or `Db: ` (PS and MariaDB use `Schema: `);
-- ...
-
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
