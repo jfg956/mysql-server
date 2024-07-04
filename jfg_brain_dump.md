@@ -322,6 +322,51 @@ SET timestamp=1717443437;
 select database();
 ```
 
+
+#### Weird db name with MySQL, PS and MariaDB
+
+```
+dbdeployer deploy single $version -c slow_query_log_file=slow.log -c slow_query_log=ON
+
+db_name='test
+jfg'
+./use <<< "create database \`$db_name\`; create table \`$db_name\`.t(id int); insert into \`$db_name\`.t values (1);"
+./use "$db_name" <<< "set session long_query_time=0.5; select sleep(1), t.* from t;" > /dev/null
+
+## --== version=mysql_8_4_0:
+# Time: 2024-07-04T17:33:27.081804Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11
+# Query_time: 1.004775  Lock_time: 0.000001 Rows_sent: 1  Rows_examined: 1
+use test
+jfg;
+SET timestamp=1720114406;
+select sleep(1), t.* from t;
+
+## --== version=ps_8_0_36:
+# Time: 2024-07-04T17:28:15.724610Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    10
+# Schema: test
+jfg  Last_errno: 0  Killed: 0
+# Query_time: 1.000422  Lock_time: 0.000003  Rows_sent: 1  Rows_examined: 1  Rows_affected: 0  Bytes_sent: 98
+use test
+jfg;
+SET timestamp=1720114094;
+select sleep(1), t.* from t;
+
+## --== version=mariadb_11_3_2:
+# Time: 240704 17:29:56
+# User@Host: msandbox[msandbox] @ localhost []
+# Thread_id: 5  Schema: test
+jfg  QC_hit: No
+# Query_time: 1.000279  Lock_time: 0.000061  Rows_sent: 1  Rows_examined: 1
+# Rows_affected: 0  Bytes_sent: 108
+use test
+jfg;
+SET timestamp=1720114196;
+select sleep(1), t.* from t;
+```
+
+
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 ### Slow Query Log File contains use
@@ -737,13 +782,48 @@ This working was expected as extra data at the end of the `User` line is ignored
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
+### Testing with weird db name
+
+Manual test on 2024-07-04, not working as expected, not yet sure what to do...
+Note that this is a larger problem, ...add link to Weird db name with MySQL, PS and MariaDB...
+```
+dbdeployer deploy single mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
+
+db_name='test
+jfg'
+./use <<< "create database \`$db_name\`; create table \`$db_name\`.t(id int); insert into \`$db_name\`.t values (1);"
+./use "$db_name" <<< "set session long_query_time=0.5; select sleep(1), t.* from t;" > /dev/null
+./use "$db_name" <<< "set global log_output = 'TABLE'; set session long_query_time=0.5; select sleep(1), t.* from t;" > /dev/null
+./use mysql <<< "select db, sql_text from slow_log"
+db      sql_text
+test\njfg       select sleep(1), t.* from t
+./use mysql <<< "select db, sql_text from slow_log\G"
+*************************** 1. row ***************************
+      db: test
+jfg
+sql_text: select sleep(1), t.* from t
+cat data/slow.log 
+/home/jgagne/opt/mysql/mysql_8.4.0/bin/mysqld, Version: 8.4.0 (Source distribution). started with:
+Tcp port: 8400  Unix socket: /tmp/mysql_sandbox8400.sock
+Time                 Id Command    Argument
+# Time: 2024-07-04T17:10:16.901679Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11  Db: test
+jfg
+# Query_time: 1.000402  Lock_time: 0.000004 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1720113015;
+select sleep(1), t.* from t;
+```
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
 ### Other Notes
 
 While preparing this work, I saw that Percona Server has `Rows_affected` in its
 slow query log file (MySQL does not).  I opened a feature request for this,
 framing it in such a way that it does not read "please implement this feature
 from Percona".  ;-)
-- [Bug#114961: Please consider adding fields to log_slow_extra](https://bugs.mysql.com/bug.php?id=114961)
+- [Bug#114961: Please consider adding fields to log_slow_extra](https://bugs.mysql.com/bug.php?id=114961).
 
 While doing this work, I realized that log_slow_extra put fieds in the slow
 query log file that are not in the P_S "digest" table, so I opened below:
