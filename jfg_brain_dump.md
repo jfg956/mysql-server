@@ -124,6 +124,10 @@ While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
 - [Bug#115084: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
 
+TODO: open a bug about multi-line db names and "use <db>;" in Slow Query Log file...
+
+TODO: decide what to do with multi-line db names...
+
 TODO: Percona related stuff (suggested by Daniel Black in his
 [comments](https://github.com/jfg956/mysql-server/pull/8#pullrequestreview-2087006510)
 on the work PR):
@@ -785,7 +789,7 @@ This working was expected as extra data at the end of the `User` line is ignored
 ### Testing with weird db name
 
 Manual test on 2024-07-04, not working as expected, not yet sure what to do...
-Note that this is a larger problem, ...add link to Weird db name with MySQL, PS and MariaDB...
+Note that this is a larger problem: [Weird db name with MySQL, PS and MariaDB](#weird-db-name-with-mysql-ps-and-mariadb).
 ```
 dbdeployer deploy single mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
 
