@@ -124,8 +124,6 @@ While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
 - [Bug#115084: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
 
-TODO: open a bug about multi-line db names and "use <db>;" in Slow Query Log file...
-
 TODO: decide what to do with multi-line db names...
 
 TODO: Percona related stuff (suggested by Daniel Black in his
@@ -328,6 +326,11 @@ select database();
 
 
 #### Weird db name with MySQL, PS and MariaDB
+
+Bug about Invalid "use" with multi-line schema.
+- https://bugs.mysql.com/bug.php?id=115526
+- https://perconadev.atlassian.net/browse/PS-9298
+- https://jira.mariadb.org/browse/MDEV-34539
 
 ```
 dbdeployer deploy single $version -c slow_query_log_file=slow.log -c slow_query_log=ON
