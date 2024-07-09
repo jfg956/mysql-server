@@ -2,7 +2,7 @@
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 I would like to implement (not fix, because it is a feature request)
-[Bug#106645i: low query log is not logging database/schema name](https://bugs.mysql.com/bug.php?id=106645).
+[Bug#106645: low query log is not logging database/schema name](https://bugs.mysql.com/bug.php?id=106645).
 
 This improvement was suggested to me (JFG) by a colleague (voluntarily
 holding details to avoid exposing internal Aiven politics in public GitHub).
@@ -123,8 +123,6 @@ be a bigger change than what I think should be allocated to this.
 While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
 - [Bug#115084: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
-
-TODO: decide what to do with multi-line db names...
 
 TODO: Percona related stuff (suggested by Daniel Black in his
 [comments](https://github.com/jfg956/mysql-server/pull/8#pullrequestreview-2087006510)
@@ -793,6 +791,11 @@ This working was expected as extra data at the end of the `User` line is ignored
 
 Manual test on 2024-07-04, not working as expected, not yet sure what to do...
 Note that this is a larger problem: [Weird db name with MySQL, PS and MariaDB](#weird-db-name-with-mysql-ps-and-mariadb).
+
+Update 2024-07-09: I decided to keep this bug and wait for Oracle to address
+[Bug#115526](https://bugs.mysql.com/bug.php?id=115526).  Decision traced in a
+comment in the [RFC PR](https://github.com/jfg956/mysql-server/pull/9#issuecomment-2218161395).
+
 ```
 dbdeployer deploy single mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
 
