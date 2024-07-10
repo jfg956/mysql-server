@@ -83,11 +83,21 @@ as `Id:`.  So I could change my mind about the name.
 Addition: there is the case where no Db is selected.  In this case, having
 `Db: ...` does not work.  For this, I log `NoDb` instead of `Db: ...`.
 
-Update: instead of using `NoDb`, I could log "Db: " (with the empty-string
+Update: instead of using `NoDb`, I could log `Db: ` (with the empty-string
 db).  This is what Percona Server and MariaDB are doing, see
 [No Db with PS and MariaDB](#no-db-with-ps-and-mariadb).
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+Update 2024-07-09: I decided to replace `NoDb` by `Db: `.  According to
+[the votes on the RFC PR](https://github.com/jfg956/mysql-server/pull/9#issuecomment-2160862534),
+it is what people want.  Also, Tomer gives a good argument for this in
+[his comment on the RFC PR](https://github.com/jfg956/mysql-server/pull/9#issuecomment-2164757435):
+easier REGEXP matching.  This has been announced in a
+[comment on the RFC PR](https://github.com/jfg956/mysql-server/pull/9#issuecomment-2218161395).
+
+Also update 2024-07-09 / lol note: good thing I am not using `NoDb` anymore,
+it is not very grep-able because InnoDB.
 
 Interestingly, while doing this work, I saw that there is a `use ...` logged
 with the 1st slow log entry in a different db, link to the code below.
@@ -558,6 +568,9 @@ lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
 [...]
 ```
 
+Above was done before replacinbg `NoDb` by `Db: `, after that change, I added a
+test for "no selected database".
+
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
@@ -571,6 +584,51 @@ lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
 #### Testing surprises
 - [Bug#115189: P_S Digest table unexpectedly reports created database on replica](https://bugs.mysql.com/bug.php?id=115189);
 - [Bug#115203: Empty "use ;" on replica in slow query log file](https://bugs.mysql.com/bug.php?id=115203);
+- [Bug#115526: Invalid multi-line "use" in slow query log file with multi-line schema](https://bugs.mysql.com/bug.php?id=115526);
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Testing manually
+
+This section was added after changing `NoDb` to `Db: `, so no test with `NoDb`.
+
+```
+dbdeployer deploy single mysql_8.4.0 -c slow_query_log_file=slow.log -c slow_query_log=ON
+
+./use <<< "create database test_jfg; create table test_jfg.t(id int); insert into test_jfg.t values (1);"
+./use test_jfg <<< "set session long_query_time=0.5; select sleep(1), t.* from test_jfg.t;" > /dev/null
+./use <<< "set session long_query_time=0.5; select sleep(1), t.* from test_jfg.t;" > /dev/null
+
+cat data/slow.log
+/home/jgagne/opt/mysql/mysql_8.4.0/bin/mysqld, Version: 8.4.0 (Source distribution). started with:
+Tcp port: 8400  Unix socket: /tmp/mysql_sandbox8400.sock
+Time                 Id Command    Argument
+# Time: 2024-07-10T15:05:50.899926Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11  Db: test_jfg
+# Query_time: 1.000448  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1720623949;
+select sleep(1), t.* from test_jfg.t;
+# Time: 2024-07-10T15:06:12.386104Z
+# User@Host: msandbox[msandbox] @ localhost []  Id:    12  Db: 
+# Query_time: 1.000766  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1720623971;
+select sleep(1), t.* from test_jfg.t;
+
+cat -E data/slow.log
+/home/jgagne/opt/mysql/mysql_8.4.0/bin/mysqld, Version: 8.4.0 (Source distribution). started with:$
+Tcp port: 8400  Unix socket: /tmp/mysql_sandbox8400.sock$
+Time                 Id Command    Argument$
+# Time: 2024-07-10T15:05:50.899926Z$
+# User@Host: msandbox[msandbox] @ localhost []  Id:    11  Db: test_jfg$
+# Query_time: 1.000448  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 1$
+SET timestamp=1720623949;$
+select sleep(1), t.* from test_jfg.t;$
+# Time: 2024-07-10T15:06:12.386104Z$
+# User@Host: msandbox[msandbox] @ localhost []  Id:    12  Db: $
+# Query_time: 1.000766  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 1$
+SET timestamp=1720623971;$
+select sleep(1), t.* from test_jfg.t;$
+```
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -718,7 +776,7 @@ alter table test_jfg.t add column v int;
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-### Testing mysqldumpslow
+#### Testing mysqldumpslow
 
 Existing test ([mysqldumpslow](https://github.com/jfg956/mysql-server/blob/mysql-8.4.0/mysql-test/t/mysqldumpslow.test)) ok:
 ```
@@ -787,7 +845,7 @@ This working was expected as extra data at the end of the `User` line is ignored
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-### Testing with weird db name
+#### Testing with weird db name
 
 Manual test on 2024-07-04, not working as expected, not yet sure what to do...
 Note that this is a larger problem: [Weird db name with MySQL, PS and MariaDB](#weird-db-name-with-mysql-ps-and-mariadb).

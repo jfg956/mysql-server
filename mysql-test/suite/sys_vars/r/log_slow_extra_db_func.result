@@ -30,6 +30,19 @@ SELECT sleep(0.5);
 ## Resetting the slow query log file.
 FLUSH SLOW LOGS;
 
+SET @@session.long_query_time = 0.1;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+# Time: x
+# UH: n Id: n Db: 
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1
+SELECT sleep(0.5);
+
+## Resetting the slow query log file.
+FLUSH SLOW LOGS;
+
 SET @@global.log_slow_extra_db = 0;
 SELECT sleep(0.5);
 sleep(0.5)

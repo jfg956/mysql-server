@@ -724,12 +724,14 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     } else {
       log_db_change = false;
       db[0] = 0;  /* Resetting db triggers logging db change after disabling log_slow_extra_db. */
-      /* When no schema is selected, str is null on the primary and empty-string on replicas ¯\_(ツ)_/¯. */
-      if (thd->db().str && thd->db().length > 0) {
-        if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, thd->db().str) == (uint)-1)
+
+      /* When no schema is selected, str is null on the primary and empty-string on replicas ¯\_(ツ)_/¯.
+       * It does not matter much here, but  leaving a comment in case it matters in the future.
+       * This "weirdness" is the source of Bug#115203. */
+      const char *db4file = thd->db().str ? thd->db().str : "";
+
+      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, db4file) == (uint)-1)
           goto err;
-      } else if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  NoDb\n", user_host, buff) == (uint)-1)
-        goto err;
     }
   }
 
