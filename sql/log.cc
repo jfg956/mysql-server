@@ -693,7 +693,14 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
                                 size_t sql_text_len) {
   char buff[80], *end;
   char query_time_buff[22 + 7], lock_time_buff[22 + 7];
-  end = buff;
+
+  /* In my patch for Bug#106645, I am allowing myself to change the initial assigment of end
+   *   from buff to NULL and assigning it to buff when it is used.  IMHO it makes more clear
+   *   that there are many independant usages of buff in this function,
+   *   but feel free to revert if you do not like it. */
+  /* Will be set to buff below, but setting to NULL now to make clear when this is used.
+   * Cannot declare when used as "goto err" would cross a declaration / initialisation boundary. */
+  end = NULL;
 
   mysql_mutex_lock(&LOCK_log);
   assert(is_open());
@@ -833,6 +840,15 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
       goto err;
     my_stpcpy(db, thd->db().str);
   }
+
+  /* In my patch for Bug#106645, I am allowing myself to change the initial assigment of end
+   *   from buff to NULL and assigning it to buff here.  IMHO it makes more clear that all usage of buff
+   *   above are irrelevant to the code below, but feel free to revert if you do not like it. */
+  /* Re-assigning end to make clear it is not used in above.
+   * We cannot "just" declare / initialise here as "goto err" would then cross
+   *   a declaration / initialisation boundary. */
+  end = buff;
+
   if (thd->stmt_depends_on_first_successful_insert_id_in_prev_stmt) {
     end = my_stpcpy(end, ",last_insert_id=");
     end = longlong10_to_str(
