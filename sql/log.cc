@@ -694,12 +694,12 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
   char buff[80], *end;
   char query_time_buff[22 + 7], lock_time_buff[22 + 7];
 
-  /* In my patch for Bug#106645, I am allowing myself to change the initial assigment of end
-   *   from buff to NULL and assigning it to buff when it is used.  IMHO it makes more clear
-   *   that there are many independant usages of buff in this function,
+  /* In my patch for Bug#106645, I am allowing myself to change the initial assignment of end
+   *   from buff to NULL and assigning it to buff when it is used.  IMHO it makes clearer
+   *   that there are many independent usages of buff in this function,
    *   but feel free to revert if you do not like it. */
   /* Will be set to buff below, but setting to NULL now to make clear when this is used.
-   * Cannot declare when used as "goto err" would cross a declaration / initialisation boundary. */
+   * Cannot declare when used as "goto err" would cross a declaration / initialization boundary. */
   end = NULL;
 
   mysql_mutex_lock(&LOCK_log);
@@ -714,6 +714,7 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
 
     make_iso8601_timestamp(my_timestamp, current_utime,
                            iso8601_sysvar_logtimestamps);
+
     /* In my patch for Bug#106645, I am allowing myself to inline the declaration of buff_len.
      *   IMHO, this makes things better as after removing the usage of buff_len further down below,
      *   here is the only place where it is used, but feel free to revert if you do not like it. */
@@ -739,7 +740,7 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
 
       /* In my patch for Bug#106645, I am allowing myself to change the format of Id.
        *   This avoids a snprintf, and is more consistent with Thread_id below (which looks better).
-       *   IMHO, addind Db is the right time to improve on the formatting of this line,
+       *   IMHO, adding Db is the right time to improve on the formatting of this line,
        *   but feel free to revert if you do not like it. */
       if (my_b_printf(&log_file, "# User@Host: %s  Id: %lu  Db: %s\n", user_host, (ulong)thd->thread_id(), db4file) == (uint)-1)
           goto err;
@@ -841,12 +842,12 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     my_stpcpy(db, thd->db().str);
   }
 
-  /* In my patch for Bug#106645, I am allowing myself to change the initial assigment of end
-   *   from buff to NULL and assigning it to buff here.  IMHO it makes more clear that all usage of buff
+  /* In my patch for Bug#106645, I am allowing myself to change the initial assignment of end
+   *   from buff to NULL and assigning it to buff here.  IMHO it makes clearer that all usage of buff
    *   above are irrelevant to the code below, but feel free to revert if you do not like it. */
   /* Re-assigning end to make clear it is not used in above.
-   * We cannot "just" declare / initialise here as "goto err" would then cross
-   *   a declaration / initialisation boundary. */
+   * We cannot declare / initialize here as "goto err" would cross
+   *   a declaration / initialization boundary. */
   end = buff;
 
   if (thd->stmt_depends_on_first_successful_insert_id_in_prev_stmt) {
@@ -885,7 +886,7 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     DBUG_EXECUTE_IF("simulate_slow_log_write_error",
                     { DBUG_SET("+d,simulate_file_write_error"); });
     /* In my patch for Bug#106645, I am allowing myself to remove the usage of the buff_len
-     *   variable in below.  IMHO, it is better code as it avoids re-using this variable,
+     *   variable in below.  IMHO, it is better code as it does not reusing this variable,
      *   but feel free to revert if you do not like it. */
     if (my_b_write(&log_file, (uchar *)buff, (ulong)(end - buff))) goto err;
   }

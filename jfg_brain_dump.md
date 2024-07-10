@@ -141,12 +141,12 @@ on the work PR):
 - adjust [SlowLogParser](https://github.com/percona/percona-toolkit/blob/83ba470afe5008276a7656102b8abe0cf40a31e6/lib/SlowLogParser.pm#L45)
 
 While doing this work, I "played with fire" and tried improving on the way the
-function `File_query_log::write_slow` is implemented.  This lead to four
+function `File_query_log::write_slow` is implemented.  This leads to four
 improvements in below commits:
 - [Remove buff_len for administrator command](https://github.com/jfg956/mysql-server/pull/8/commits/cc3cbb3a85e2bd5dea97279c9c9782665ef92b8f);
-- [With "Db:", make "Id:" format consisent with "Thread_id:"](https://github.com/jfg956/mysql-server/pull/8/commits/4899363462a638e5b3ded4f40de5cd50e45ff0d4);
+- [With "Db:", make "Id:" format consistent with "Thread_id:"](https://github.com/jfg956/mysql-server/pull/8/commits/4899363462a638e5b3ded4f40de5cd50e45ff0d4);
 - [Inline the declaration of buff_len](https://github.com/jfg956/mysql-server/pull/8/commits/a36225c5fb806b695ab3e19c4286158e21807ac8);
-- [Making usage of end more clear with better assigments](https://github.com/jfg956/mysql-server/pull/8/commits/8d44f3090d86ebf3f5acb35143994c5e6e6231b5);
+- [Making usage of end clearer with better assignments](https://github.com/jfg956/mysql-server/pull/8/commits/8d44f3090d86ebf3f5acb35143994c5e6e6231b5);
 - "End of list".
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
@@ -576,7 +576,7 @@ lse="sys_vars.log_slow_extra_basic sys_vars.log_slow_extra_func"
 [...]
 ```
 
-Above was done before replacinbg `NoDb` by `Db: `, after that change, I added a
+Above was done before replacing `NoDb` by `Db: `, after that change, I added a
 test for "no selected database".
 
 
@@ -716,7 +716,7 @@ create table t(id int);
 # This led me to open below.
 # Bug#115189: P_S Digest table unexpectedly reports created database on replica: https://bugs.mysql.com/bug.php?id=115189.
 
-# Below leads to no log in n1 nor n2 because because log_slow_admin_statements = OFF.
+# Below leads to no log in n1 nor n2 because log_slow_admin_statements = OFF.
 ./n1 test_jfg <<< "set session long_query_time = 0; alter table t add column v int"
 
 ./n1 <<< "set global log_slow_admin_statements = ON"
@@ -903,7 +903,7 @@ framing it in such a way that it does not read "please implement this feature
 from Percona".  ;-)
 - [Bug#114961: Please consider adding fields to log_slow_extra](https://bugs.mysql.com/bug.php?id=114961).
 
-While doing this work, I realized that log_slow_extra put fieds in the slow
+While doing this work, I realized that log_slow_extra put fields in the slow
 query log file that are not in the P_S "digest" table, so I opened below:
 - [Bug #115372	Please consider adding fields to P_S "Digest" table](https://bugs.mysql.com/bug.php?id=115372).
 
