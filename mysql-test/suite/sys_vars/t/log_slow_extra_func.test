@@ -2,29 +2,9 @@
 --echo # WL#12393: Logging: Add new command line option for richer slow query logging
 --echo
 
---echo ## Save state.
-SET @global_log_output = @@global.log_output;
-SET @global_slow_query_log = @@global.slow_query_log;
-SET @global_slow_query_log_file = @@global.slow_query_log_file;
-SET @global_log_slow_extra = @@global.log_slow_extra;
-SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
-
---echo
---echo ## Common to all tests below.
+# Common variables for all tests.
 
 let $MYSQLD_DATADIR= `select @@datadir`;
-
-# Setting slow_query_log_file before enabling the slow log to avoid creating a random file.
-SET @@global.slow_query_log_file = 'my_slow_test.log';
-
-SET @@global.log_output = 'FILE';
-SET @@global.slow_query_log = ON;
-
-# This needs to go after log_output as it might warn otherwise.
-# Doing tests with log_slow_extra_db = 1 allows not having to manage "use ..." in the output.
-SET @@global.log_slow_extra_db = 1;
-
-SET @@session.long_query_time = 0.1;
 
 # These regex patterns are for masking-out non-deterministic output.
 --let $PATTERN_VER= /.*Version.*started with.*\n//
@@ -40,6 +20,29 @@ SET @@session.long_query_time = 0.1;
 
 --let $PATTERN= $PATTERN_VER $PATTERN_TCP $PATTERN_TIME1 $PATTERN_TIME2 $PATTERN_UH $PATTERN_QT $PATTERN_THREAD $PATTERN_BR $PATTERN_START $PATTERN_TS
 
+--echo ## Save state.
+SET @global_log_output = @@global.log_output;
+SET @global_slow_query_log = @@global.slow_query_log;
+SET @global_slow_query_log_file = @@global.slow_query_log_file;
+SET @global_log_slow_extra = @@global.log_slow_extra;
+SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
+
+--echo
+--echo ## Common to all tests below.
+
+# Setting slow_query_log_file before enabling the slow log to avoid creating a random file.
+SET @@global.slow_query_log_file = 'my_slow_test.log';
+
+SET @@global.log_output = 'FILE';
+SET @@global.slow_query_log = ON;
+
+# This needs to go after log_output as it might warn otherwise.
+# Doing tests with log_slow_extra_db = 1 allows not having to manage "use ..." in the output.
+SET @@global.log_slow_extra_db = 1;
+
+SET @@session.long_query_time = 0.1;
+
+# Clean slow query log file before test.
 --source include/slow_query_log_file_reset.inc
 
 --echo
@@ -51,6 +54,7 @@ SELECT sleep(0.5);
 --replace_regex $PATTERN
 --exec cat $MYSQLD_DATADIR/my_slow_test.log
 
+# Clean slow query log file before test.
 --source include/slow_query_log_file_reset.inc
 
 --echo

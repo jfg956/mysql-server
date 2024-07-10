@@ -55,8 +55,6 @@ SELECT sleep(0.5);
 --replace_regex $PATTERN
 --exec cat $MYSQLD_DATADIR/my_slow_test.log
 
-# Testing with no selected database.
-
 # New connection with no selected database.
 # Below from the doc...
 # https://dev.mysql.com/doc/dev/mysql-server/latest/PAGE_MYSQL_TEST_COMMANDS.html
