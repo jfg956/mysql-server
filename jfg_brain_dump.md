@@ -140,6 +140,14 @@ on the work PR):
 - add a [slow log sample](https://github.com/percona/percona-toolkit/tree/3.x/t/lib/samples/slowlogs)
 - adjust [SlowLogParser](https://github.com/percona/percona-toolkit/blob/83ba470afe5008276a7656102b8abe0cf40a31e6/lib/SlowLogParser.pm#L45)
 
+While doing this work, I "played with fire" and tried improving on the way the
+function `File_query_log::write_slow` is implemented.  This lead to four
+improvements in below commits:
+- [Remove buff_len for administrator command](https://github.com/jfg956/mysql-server/pull/8/commits/cc3cbb3a85e2bd5dea97279c9c9782665ef92b8f);
+- [With "Db:", make "Id:" format consisent with "Thread_id:"](https://github.com/jfg956/mysql-server/pull/8/commits/4899363462a638e5b3ded4f40de5cd50e45ff0d4);
+- [Inline the declaration of buff_len](https://github.com/jfg956/mysql-server/pull/8/commits/a36225c5fb806b695ab3e19c4286158e21807ac8);
+- [Making usage of end more clear with better assigments](https://github.com/jfg956/mysql-server/pull/8/commits/8d44f3090d86ebf3f5acb35143994c5e6e6231b5);
+- "End of list".
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
@@ -579,12 +587,14 @@ test for "no selected database".
 - dbdeployer does not work with replication and 8.4 ([Slack](https://mysqlcommunity.slack.com/archives/C06SQ27S26A/p1717097231526739));
 - [Bug#115179: Replication Setup Documentation missing SOURCE_SSL=1](https://bugs.mysql.com/bug.php?id=115179);
 - [Bug#115187: Doc do not mention replacement for RESET MASTER](https://bugs.mysql.com/bug.php?id=115187);
+- "End of list".
 
 
 #### Testing surprises
 - [Bug#115189: P_S Digest table unexpectedly reports created database on replica](https://bugs.mysql.com/bug.php?id=115189);
 - [Bug#115203: Empty "use ;" on replica in slow query log file](https://bugs.mysql.com/bug.php?id=115203);
 - [Bug#115526: Invalid multi-line "use" in slow query log file with multi-line schema](https://bugs.mysql.com/bug.php?id=115526);
+- "End of list".
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
