@@ -743,7 +743,7 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
        *   IMHO, adding Db is the right time to improve on the formatting of this line,
        *   but feel free to revert if you do not like it. */
       if (my_b_printf(&log_file, "# User@Host: %s  Id: %lu  Db: %s\n", user_host, (ulong)thd->thread_id(), db4file) == (uint)-1)
-          goto err;
+        goto err;
     }
   }
 
