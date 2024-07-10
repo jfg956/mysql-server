@@ -886,7 +886,7 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     DBUG_EXECUTE_IF("simulate_slow_log_write_error",
                     { DBUG_SET("+d,simulate_file_write_error"); });
     /* In my patch for Bug#106645, I am allowing myself to remove the usage of the buff_len
-     *   variable in below.  IMHO, it is better code as it does not reusing this variable,
+     *   variable in below.  IMHO, it is better code as it does not reuse this variable,
      *   but feel free to revert if you do not like it. */
     if (my_b_write(&log_file, (uchar *)buff, (ulong)(end - buff))) goto err;
   }
