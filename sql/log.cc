@@ -693,7 +693,6 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
                                 size_t sql_text_len) {
   char buff[80], *end;
   char query_time_buff[22 + 7], lock_time_buff[22 + 7];
-  size_t buff_len;
   end = buff;
 
   mysql_mutex_lock(&LOCK_log);
@@ -708,8 +707,10 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
 
     make_iso8601_timestamp(my_timestamp, current_utime,
                            iso8601_sysvar_logtimestamps);
-
-    buff_len = snprintf(buff, sizeof buff, "# Time: %s\n", my_timestamp);
+    /* In my patch for Bug#106645, I am allowing myself to inline the declaration of buff_len.
+     *   IMHO, this makes things better as after removing the usage of buff_len further down below,
+     *   here is the only place where it is used, but feel free to revert if you do not like it. */
+    size_t buff_len = snprintf(buff, sizeof buff, "# Time: %s\n", my_timestamp);
 
     /* Note that my_b_write() assumes it knows the length for this */
     if (my_b_write(&log_file, (uchar *)buff, buff_len)) goto err;
