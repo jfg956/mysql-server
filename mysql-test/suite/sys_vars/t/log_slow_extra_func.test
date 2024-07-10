@@ -1,0 +1,82 @@
+# This is contributed with Bug#106645, but this still is about WL#12393.
+--echo # WL#12393: Logging: Add new command line option for richer slow query logging
+--echo
+
+# Common variables for all tests.
+
+let $MYSQLD_DATADIR= `select @@datadir`;
+
+# These regex patterns are for masking-out non-deterministic output.
+--let $PATTERN_VER= /.*Version.*started with.*\n//
+--let $PATTERN_TCP= /^Tcp port:.*Unix socket:.*\n//
+--let $PATTERN_TIME1= /^Time.*Id.*Command.*Argument.*\n//
+--let $PATTERN_TIME2= /^# Time: .*/# Time: x/
+--let $PATTERN_UH= /^# User@Host:.*Id:.*Db:/# User@Host: n Id: n Db:/
+--let $PATTERN_QT= /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/
+--let $PATTERN_THREAD= /Thread_id:.*Errno:/Thread_id: n Errno:/
+--let $PATTERN_BR= /Bytes_received:.*Bytes_sent:.*Read_first:/Bytes_received: n Bytes_sent: n Read_first:/
+--let $PATTERN_START= /Start:.*End:.*/Start: n End: n/
+--let $PATTERN_TS= /SET timestamp=.*\n//
+
+--let $PATTERN= $PATTERN_VER $PATTERN_TCP $PATTERN_TIME1 $PATTERN_TIME2 $PATTERN_UH $PATTERN_QT $PATTERN_THREAD $PATTERN_BR $PATTERN_START $PATTERN_TS
+
+--echo ## Save state.
+SET @global_log_output = @@global.log_output;
+SET @global_slow_query_log = @@global.slow_query_log;
+SET @global_slow_query_log_file = @@global.slow_query_log_file;
+SET @global_log_slow_extra = @@global.log_slow_extra;
+SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
+
+--echo
+--echo ## Common to all tests below.
+
+# Setting slow_query_log_file before enabling the slow log to avoid creating a random file.
+SET @@global.slow_query_log_file = 'my_slow_test.log';
+
+SET @@global.log_output = 'FILE';
+SET @@global.slow_query_log = ON;
+
+# This needs to go after log_output as it might warn otherwise.
+# Doing tests with log_slow_extra_db = 1 allows not having to manage "use ..." in the output.
+SET @@global.log_slow_extra_db = 1;
+
+SET @@session.long_query_time = 0.1;
+
+# Clean slow query log file before test.
+--source include/slow_query_log_file_reset.inc
+
+--echo
+SET @@global.log_slow_extra = 0;
+SELECT sleep(0.5);
+
+--echo
+# Checking the content of the slow query log file.
+--replace_regex $PATTERN
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+# Clean slow query log file before test.
+--source include/slow_query_log_file_reset.inc
+
+--echo
+SET @@global.log_slow_extra = 1;
+SELECT sleep(0.5);
+
+--echo
+# Checking the content of the slow query log file.
+--replace_regex $PATTERN
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+# Cleanup.
+--remove_file $MYSQLD_DATADIR/my_slow_test.log
+
+--echo
+--echo ## Restore state.
+# These need to go before log_output as they might warn otherwise.
+SET @@global.log_slow_extra = @global_log_slow_extra;
+SET @@global.log_slow_extra_db = @global_log_slow_extra_db;
+
+SET @@global.log_output = @global_log_output;
+SET @@global.slow_query_log = @global_slow_query_log;
+SET @@global.slow_query_log_file = @global_slow_query_log_file;
+
+# EOF.

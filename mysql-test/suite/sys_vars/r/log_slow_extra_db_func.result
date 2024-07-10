@@ -1,0 +1,62 @@
+# Bug#106645: Slow query log is not logging database/schema name.
+
+## Save state.
+SET @global_log_output = @@global.log_output;
+SET @global_slow_query_log = @@global.slow_query_log;
+SET @global_slow_query_log_file = @@global.slow_query_log_file;
+SET @global_log_slow_extra = @@global.log_slow_extra;
+SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
+
+## Common to all tests below.
+SET @@global.slow_query_log_file = 'my_slow_test.log';
+SET @@global.log_output = 'FILE';
+SET @@global.slow_query_log = ON;
+SET @@global.log_slow_extra = 0;
+SET @@session.long_query_time = 0.1;
+
+## Resetting the slow query log file.
+FLUSH SLOW LOGS;
+
+SET @@global.log_slow_extra_db = 1;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+# Time: x
+# UH: n Id: n Db: test
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1
+SELECT sleep(0.5);
+
+## Resetting the slow query log file.
+FLUSH SLOW LOGS;
+
+SET @@session.long_query_time = 0.1;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+# Time: x
+# UH: n Id: n Db: 
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1
+SELECT sleep(0.5);
+
+## Resetting the slow query log file.
+FLUSH SLOW LOGS;
+
+SET @@global.log_slow_extra_db = 0;
+SELECT sleep(0.5);
+sleep(0.5)
+0
+
+# Time: x
+# UH: n Id: n
+# Query_time: n Lock_time: n Rows_sent: 1  Rows_examined: 1
+use test;
+SELECT sleep(0.5);
+
+## Restore state.
+SET @@global.log_slow_extra = @global_log_slow_extra;
+SET @@global.log_slow_extra_db = @global_log_slow_extra_db;
+SET @@global.log_output = @global_log_output;
+SET @@global.slow_query_log = @global_slow_query_log;
+SET @@global.slow_query_log_file = @global_slow_query_log_file;
