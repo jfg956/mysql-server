@@ -862,10 +862,12 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
   }
   if (is_command) {
     end = strxmov(buff, "# administrator command: ", NullS);
-    buff_len = (ulong)(end - buff);
     DBUG_EXECUTE_IF("simulate_slow_log_write_error",
                     { DBUG_SET("+d,simulate_file_write_error"); });
-    if (my_b_write(&log_file, (uchar *)buff, buff_len)) goto err;
+    /* In my patch for Bug#106645, I am allowing myself to remove the usage of the buff_len
+     *   variable in below.  IMHO, it is better code as it avoids re-using this variable,
+     *   but feel free to revert if you do not like it. */
+    if (my_b_write(&log_file, (uchar *)buff, (ulong)(end - buff))) goto err;
   }
   if (my_b_write(&log_file, pointer_cast<const uchar *>(sql_text),
                  sql_text_len) ||
