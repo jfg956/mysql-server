@@ -714,11 +714,10 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     /* Note that my_b_write() assumes it knows the length for this */
     if (my_b_write(&log_file, (uchar *)buff, buff_len)) goto err;
 
-    /* Below could be rewritten to avoid code duplication.
-     * This could allow a single my_b_printf, but would prevent code grepping.
-     * Allowing grepping is better than avoiding code duplication. */
-    buff_len = snprintf(buff, 32, "%5u", thd->thread_id());
     if (!opt_log_slow_extra_db) {
+      /* This section of code will eventually be removed when everyone will be used
+       *   to the new slow query log file format with "Db:". */
+      snprintf(buff, 32, "%5u", thd->thread_id());
       if (my_b_printf(&log_file, "# User@Host: %s  Id: %s\n", user_host, buff) == (uint)-1)
         goto err;
     } else {
@@ -730,7 +729,11 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
        * This "weirdness" is the source of Bug#115203. */
       const char *db4file = thd->db().str ? thd->db().str : "";
 
-      if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, db4file) == (uint)-1)
+      /* In my patch for Bug#106645, I am allowing myself to change the format of Id.
+       *   This avoids a snprintf, and is more consistent with Thread_id below (which looks better).
+       *   IMHO, addind Db is the right time to improve on the formatting of this line,
+       *   but feel free to revert if you do not like it. */
+      if (my_b_printf(&log_file, "# User@Host: %s  Id: %lu  Db: %s\n", user_host, (ulong)thd->thread_id(), db4file) == (uint)-1)
           goto err;
     }
   }
