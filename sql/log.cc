@@ -693,8 +693,14 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
                                 size_t sql_text_len) {
   char buff[80], *end;
   char query_time_buff[22 + 7], lock_time_buff[22 + 7];
-  size_t buff_len;
-  end = buff;
+
+  /* In my patch for Bug#106645, I am allowing myself to change the initial assignment of end
+   *   from buff to NULL and assigning it to buff when it is used.  IMHO it makes clearer
+   *   that there are many independent usages of buff in this function,
+   *   but feel free to revert if you do not like it. */
+  /* Will be set to buff below, but setting to NULL now to make clear when this is used.
+   * Cannot declare when used as "goto err" would cross a declaration / initialization boundary. */
+  end = NULL;
 
   mysql_mutex_lock(&LOCK_log);
   assert(is_open());
@@ -709,26 +715,34 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
     make_iso8601_timestamp(my_timestamp, current_utime,
                            iso8601_sysvar_logtimestamps);
 
-    buff_len = snprintf(buff, sizeof buff, "# Time: %s\n", my_timestamp);
+    /* In my patch for Bug#106645, I am allowing myself to inline the declaration of buff_len.
+     *   IMHO, this makes things better as after removing the usage of buff_len further down below,
+     *   here is the only place where it is used, but feel free to revert if you do not like it. */
+    size_t buff_len = snprintf(buff, sizeof buff, "# Time: %s\n", my_timestamp);
 
     /* Note that my_b_write() assumes it knows the length for this */
     if (my_b_write(&log_file, (uchar *)buff, buff_len)) goto err;
 
-    /* Below could be rewritten to avoid code duplication.
-     * This could allow a single my_b_printf, but would prevent code grepping.
-     * Allowing grepping is better than avoiding code duplication. */
-    buff_len = snprintf(buff, 32, "%5u", thd->thread_id());
     if (!opt_log_slow_extra_db) {
+      /* This section of code will eventually be removed when everyone will be used
+       *   to the new slow query log file format with "Db:". */
+      snprintf(buff, 32, "%5u", thd->thread_id());
       if (my_b_printf(&log_file, "# User@Host: %s  Id: %s\n", user_host, buff) == (uint)-1)
         goto err;
     } else {
       log_db_change = false;
       db[0] = 0;  /* Resetting db triggers logging db change after disabling log_slow_extra_db. */
-      /* When no schema is selected, str is null on the primary and empty-string on replicas ¯\_(ツ)_/¯. */
-      if (thd->db().str && thd->db().length > 0) {
-        if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  Db: %s\n", user_host, buff, thd->db().str) == (uint)-1)
-          goto err;
-      } else if (my_b_printf(&log_file, "# User@Host: %s  Id: %s  NoDb\n", user_host, buff) == (uint)-1)
+
+      /* When no schema is selected, str is null on the primary and empty-string on replicas ¯\_(ツ)_/¯.
+       * It does not matter much here, but  leaving a comment in case it matters in the future.
+       * This "weirdness" is the source of Bug#115203. */
+      const char *db4file = thd->db().str ? thd->db().str : "";
+
+      /* In my patch for Bug#106645, I am allowing myself to change the format of Id.
+       *   This avoids a snprintf, and is more consistent with Thread_id below (which looks better).
+       *   IMHO, adding Db is the right time to improve on the formatting of this line,
+       *   but feel free to revert if you do not like it. */
+      if (my_b_printf(&log_file, "# User@Host: %s  Id: %lu  Db: %s\n", user_host, (ulong)thd->thread_id(), db4file) == (uint)-1)
         goto err;
     }
   }
@@ -827,6 +841,15 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
       goto err;
     my_stpcpy(db, thd->db().str);
   }
+
+  /* In my patch for Bug#106645, I am allowing myself to change the initial assignment of end
+   *   from buff to NULL and assigning it to buff here.  IMHO it makes clearer that all usage of buff
+   *   above are irrelevant to the code below, but feel free to revert if you do not like it. */
+  /* Re-assigning end to make clear it is not used in above.
+   * We cannot declare / initialize here as "goto err" would cross
+   *   a declaration / initialization boundary. */
+  end = buff;
+
   if (thd->stmt_depends_on_first_successful_insert_id_in_prev_stmt) {
     end = my_stpcpy(end, ",last_insert_id=");
     end = longlong10_to_str(
@@ -860,10 +883,12 @@ bool File_query_log::write_slow(THD *thd, ulonglong current_utime,
   }
   if (is_command) {
     end = strxmov(buff, "# administrator command: ", NullS);
-    buff_len = (ulong)(end - buff);
     DBUG_EXECUTE_IF("simulate_slow_log_write_error",
                     { DBUG_SET("+d,simulate_file_write_error"); });
-    if (my_b_write(&log_file, (uchar *)buff, buff_len)) goto err;
+    /* In my patch for Bug#106645, I am allowing myself to remove the usage of the buff_len
+     *   variable in below.  IMHO, it is better code as it does not reuse this variable,
+     *   but feel free to revert if you do not like it. */
+    if (my_b_write(&log_file, (uchar *)buff, (ulong)(end - buff))) goto err;
   }
   if (my_b_write(&log_file, pointer_cast<const uchar *>(sql_text),
                  sql_text_len) ||
