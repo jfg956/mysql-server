@@ -895,6 +895,62 @@ select sleep(1), t.* from t;
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
+### Merge-ability
+
+#### Merge-ability 8.0.37
+
+This work merged on 8.0.37 (tested before replacing `NoDb` by `Db: `).
+
+I did a Fake PR for this: https://github.com/jfg956/mysql-server/pull/10
+
+(I will not do fake PR anymore, I will just test cherry-picking or merging a patch
+in detached HEAD)
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### Merge-ability 8.0.38 8.4.1 9.0.0
+
+```
+for i in 8.0.38 8.4.1 9.0.0; do
+  v=mysql-$i; echo; echo $v
+  git worktree add worktrees/${v}_bug106645_merge tags/$v
+done
+
+wget https://github.com/jfg956/mysql-server/pull/11.patch -O - > 11.patch
+commit=3dc7526ea386f950359d7a4d2e67e69478927dab
+( i=8.0.38; v=mysql-$i; echo; echo $v
+  cd worktrees/${v}_bug106645_merge
+  git cherry-pick --no-commit $commit
+); for i in 8.4.1 9.0.0; do
+( v=mysql-$i; echo $v
+  cd worktrees/${v}_bug106645_merge
+  git apply --verbose ../../11.patch
+); done
+rm 11.patch
+
+for i in 8.0.38 8.4.1 9.0.0; do
+( v=mysql-$i; echo; echo $v
+  cd worktrees/${v}_bug106645_merge
+  p=build/default; mkdir -p $p; cd $p
+  test $i == "8.0.38" && cmake ../.. -DWITH_BOOST=~/src/auto-download/boost
+  test $i == "8.0.38" || cmake ../..
+  cmake --build . -j 6
+); done
+
+# variables in below are in section "Testing script with mtr".
+for i in 8.0.38 8.4.1 9.0.0; do
+( v=mysql-$i; echo; echo $v
+  cd worktrees/${v}_bug106645_merge/build/default/mysql-test
+  set -u; ./mtr $sql $sqlf $lse $lsed
+); done
+
+# Not putting logs of above, but all passed.
+```
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
 ### Other Notes
 
 While preparing this work, I saw that Percona Server has `Rows_affected` in its
