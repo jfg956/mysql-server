@@ -1,0 +1,109 @@
+--echo # Bug#106645: Slow query log is not logging database/schema name.
+--echo
+
+# Common variables for all tests.
+
+--let $MYSQLD_DATADIR= `select @@datadir`
+
+# These regex patterns are for masking-out non-deterministic output.
+--let $PATTERN_VER= /.*Version.*started with.*\n//
+--let $PATTERN_TCP= /^Tcp port:.*Unix socket:.*\n//
+--let $PATTERN_TIME1= /^Time.*Id.*Command.*Argument.*\n//
+--let $PATTERN_TIME2= /^# Time: .*/# Time: x/
+
+# Replacing User@Host by UH as a trick to conserve "Db: ..." when it is there.
+--let $PATTERN_UH1= /^# User@Host:.*Id:.*Db:/# UH: n Id: n Db:/
+--let $PATTERN_UH2= /^# User@Host:.*Id:.*/# UH: n Id: n/
+
+--let $PATTERN_QT= /^# Query_time: .*Lock_time: .*Rows_sent:/# Query_time: n Lock_time: n Rows_sent:/
+--let $PATTERN_TS= /SET timestamp=.*\n//
+
+--let $PATTERN= $PATTERN_VER $PATTERN_TCP $PATTERN_TIME1 $PATTERN_TIME2 $PATTERN_UH1 $PATTERN_UH2 $PATTERN_QT $PATTERN_TS
+
+--echo ## Save state.
+SET @global_log_output = @@global.log_output;
+SET @global_slow_query_log = @@global.slow_query_log;
+SET @global_slow_query_log_file = @@global.slow_query_log_file;
+SET @global_log_slow_extra = @@global.log_slow_extra;
+SET @global_log_slow_extra_db = @@global.log_slow_extra_db;
+
+--echo
+--echo ## Common to all tests below.
+
+# Setting slow_query_log_file before enabling the slow log to avoid creating a random file.
+SET @@global.slow_query_log_file = 'my_slow_test.log';
+
+SET @@global.log_output = 'FILE';
+SET @@global.slow_query_log = ON;
+
+# This needs to go after log_output as it might warn otherwise.
+SET @@global.log_slow_extra = 0;
+
+SET @@session.long_query_time = 0.1;
+
+# We test log_slow_extra_db = 1 before 0 as we want to make sure a "use ..." appears with 0.
+
+# Clean slow query log file before test.
+--source include/slow_query_log_file_reset.inc
+
+--echo
+SET @@global.log_slow_extra_db = 1;
+SELECT sleep(0.5);
+
+--echo
+# Checking the content of the slow query log file.
+--replace_regex $PATTERN
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+# New connection with no selected database.
+# Below from the doc...
+# https://dev.mysql.com/doc/dev/mysql-server/latest/PAGE_MYSQL_TEST_COMMANDS.html
+#   connect (name, host_name, user_name, password, db_name [,port_num ... 
+#   *NO-ONE* means that no default database should be selected
+--connect(conn1,localhost,root,,*NO-ONE*)
+connection conn1;
+
+# Clean slow query log file before test.
+--source include/slow_query_log_file_reset.inc
+
+--echo
+SET @@session.long_query_time = 0.1;
+SELECT sleep(0.5);
+
+--echo
+# Checking the content of the slow query log file.
+--replace_regex $PATTERN
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+# Setting back connection to default, and cleanup.
+connection default;
+disconnect conn1;
+
+# As we tested with 1 before, we expect a "use ..." to appear with 0.
+
+# Clean slow query log file before test.
+--source include/slow_query_log_file_reset.inc
+
+--echo
+SET @@global.log_slow_extra_db = 0;
+SELECT sleep(0.5);
+
+--echo
+# Checking the content of the slow query log file.
+--replace_regex $PATTERN
+--exec cat $MYSQLD_DATADIR/my_slow_test.log
+
+# Cleanup.
+--remove_file $MYSQLD_DATADIR/my_slow_test.log
+
+--echo
+--echo ## Restore state.
+# These need to go before log_output as they might warn otherwise.
+SET @@global.log_slow_extra = @global_log_slow_extra;
+SET @@global.log_slow_extra_db = @global_log_slow_extra_db;
+
+SET @@global.log_output = @global_log_output;
+SET @@global.slow_query_log = @global_slow_query_log;
+SET @@global.slow_query_log_file = @global_slow_query_log_file;
+
+# EOF.

@@ -1,3 +1,15 @@
+--- Begin of branch notes.
+
+More about this work in https://github.com/jfg956/mysql-server/blob/mysql-8.4.0_bug106645/jfg_brain_dump.md.
+
+Work Fake PR: https://github.com/jfg956/mysql-server/pull/8
+
+RFC Fake PR: https://github.com/jfg956/mysql-server/pull/9
+
+Contrib Fake PR: https://github.com/jfg956/mysql-server/pull/11
+
+--- End of branch notes.
+
 Copyright (c) 2000, 2024, Oracle and/or its affiliates.
 
 This is a release of MySQL, an SQL database server.
