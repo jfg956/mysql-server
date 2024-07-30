@@ -134,11 +134,10 @@ While looking a mysqldumpslow, I saw it is broken with "administrator command",
 which I reported in below.
 - [Bug#115084: mysqldumpslow breaks on "administrator command"](https://bugs.mysql.com/bug.php?id=115084)
 
-TODO: Percona related stuff (suggested by Daniel Black in his
+Percona notified in below (suggested by Daniel Black in his
 [comments](https://github.com/jfg956/mysql-server/pull/8#pullrequestreview-2087006510)
-on the work PR):
-- add a [slow log sample](https://github.com/percona/percona-toolkit/tree/3.x/t/lib/samples/slowlogs)
-- adjust [SlowLogParser](https://github.com/percona/percona-toolkit/blob/83ba470afe5008276a7656102b8abe0cf40a31e6/lib/SlowLogParser.pm#L45)
+on the work PR).
+- https://perconadev.atlassian.net/browse/PT-2370
 
 While doing this work, I "played with fire" and tried improving on the way the
 function `File_query_log::write_slow` is implemented.  This leads to four
