@@ -88,6 +88,55 @@ select sum(SUM_NUMBER_OF_BYTES_WRITE)
 
 ### Code Notes
 
+The code for the `p_s` table `binary_log_transaction_compression_stats` is in the
+files `storage/perfschema/table_binary_log_transaction_compression_stats.{h,cc}`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/perfschema/table_binary_log_transaction_compression_stats.h
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/perfschema/table_binary_log_transaction_compression_stats.cc
+
+In `.cc` file above, we have a `struct st_binary_log_transaction_compression_stats m_rows`...
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/perfschema/table_binary_log_transaction_compression_stats.cc#L76
+
+This `struct` contains a vector...
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/perfschema/table_binary_log_transaction_compression_stats.cc#L50C8-L50C14
+
+This vector is kept in sync via `update` and `reset` functions with
+`binlog::global_context.monitoring_context().transaction_compression()`...
+- `update`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/perfschema/table_binary_log_transaction_compression_stats.cc#L57
+- `reset`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/perfschema/table_binary_log_transaction_compression_stats.cc#L66
+
+`binlog::global_context` is declared / defined there:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/global.h#L53
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/global.cc#L35
+
+`binlog::global_context.monitoring_context()` is declared / defined there:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/global.h#L50
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/global.cc#L41
+
+The return type of above (`monitoring::Context`) is declared there:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/monitoring/context.h#L292
+
+And `binlog::global_context.monitoring_context().transaction_compression()` is declared / defined there:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/monitoring/context.h#L303
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/monitoring/context.cc#L320
+
+The return type of above (`Transaction_compression`) is declared / defined there:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/monitoring/context.h#L211
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/monitoring/context.cc#L232
+
+Back at the vector in the p_s table which is sync-ed, these are the two sync
+functions:
+- `update`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/monitoring/context.cc#L300
+- `reset`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/monitoring/context.cc#L270
+
+The way `Transaction_compression` is updated is via the `update` method:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog/monitoring/context.cc#L275
+
+Above method is called here:
+- `BINARY`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog.cc#L1764
+- `RELAY`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/sql/binlog.cc#L5953
+
+So we could hook ourselved in `BINARY` above to increment the new status.
+
 ...
 
 
