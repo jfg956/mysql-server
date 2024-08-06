@@ -64,6 +64,30 @@ I asked DBA friends about initial feedback on this work, link below.
 - https://dbachat.slack.com/archives/C027R4PCV/p1722628897982989
 
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+It was brought to my attention that it is possible to crash MySQL (at least 8.0.39,
+8.4.2 and 9.0.1) by querying `p_s.binary_log_transaction_compression_stats`, more
+about this in below messages in a DBA Slack.
+- https://dbachat.slack.com/archives/D0479SMDS4Q/p1722966419772569
+- https://dbachat.slack.com/archives/C027R4PCV/p1722967438113609?thread_ts=1722628897.982989&cid=C027R4PCV
+
+Another query to get the number of bytes written to the binlogs is below, but
+unclear if this is "efficient".  Discussed in DBA Slack.
+- https://dbachat.slack.com/archives/C027R4PCV/p1722969837544739?thread_ts=1722628897.982989&cid=C027R4PCV
+```
+select sum(SUM_NUMBER_OF_BYTES_WRITE)
+  from performance_schema.file_summary_by_instance
+  where event_name='wait/io/file/sql/binlog';
+```
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Code Notes
+
 ...
 
 
