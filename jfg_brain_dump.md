@@ -8,23 +8,23 @@ I would like to implement a way to easily get these informations:
 4. number of trx larger than X bytes written to the binlogs;
 5. maybe more...
 
-1. and 2. are needs I have for a long time, they have been recently brought back to
+No 1. and 2. are needs I have for a long time, they have been recently brought back to
 my attention with something that happened recently, link to internal Slack below.
 - https://aiven-io.slack.com/archives/C01U0HU5UQZ/p1722462974667259?thread_ts=1722461294.026169&cid=C01U0HU5UQZ
 
-3. is something I thought about just now, while doing initial reserach on this
+No 3. is something I thought about just now, while doing initial reserach on this
 subject, link to inspiration below.  This might need an additionnal counter for
 bytes written to the binlogs which are for trx, not header, footer, gtid_purged,
 ...
 - https://lefred.be/content/query-and-transaction-size-in-mysql/
 
-4. is an "old" wish, being able to hunt "big" trx in the binlogs, the first step is
-probably to monitor this, and a counter looks like the right thing to do
+No 4. is an "old" wish, being able to hunt "big" trx in the binlogs, the first step
+is probably to monitor this, and a counter looks like the right thing to do
 (this would also need a global variable to be able to "set" the size at which this
 counter is incremented).
 
-5. includes other things that might be easy to add to this work, including counters
-to monitor parallel information quality, link below.
+No 5. includes other things that might be easy to add to this work, including
+counters to monitor parallel information quality, link below.
 - https://bugs.mysql.com/bug.php?id=85965
 
 
@@ -65,6 +65,10 @@ I asked DBA friends about initial feedback on this work, link below.
 
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+<a name="p_s_crash_bltcs"></a>
+
+(Direct link to here: [link](#p_s_crash_bltcs))
 
 It was brought to my attention that it is possible to crash MySQL (at least 8.0.39,
 8.4.2 and 9.0.1) by querying `p_s.binary_log_transaction_compression_stats`, more
