@@ -1,3 +1,16 @@
+--- Begin of branch notes.
+
+More about this work in https://github.com/jfg956/mysql-server/blob/mysql-9.0.1_explo_innodb_read_tail_latencies/jfg_brain_dump.md.
+
+...
+
+To create a PR:
+- https://github.com/jfg956/mysql-server/pull/new/mysql-9.0.1_explo_innodb_read_tail_latencies
+
+...
+
+--- End of branch notes.
+
 Copyright (c) 2000, 2024, Oracle and/or its affiliates.
 
 This is a release of MySQL, an SQL database server.
