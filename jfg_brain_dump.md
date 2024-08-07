@@ -112,6 +112,93 @@ q2="select sum(SUM_NUMBER_OF_BYTES_WRITE) $t $w"
 158
 ```
 
+Realized after code exploration, the content of
+`binary_log_transaction_compression_stats` does not match
+`file_summary_by_instance`...
+
+```
+q1="select UNCOMPRESSED_BYTES_COUNTER from performance_schema.binary_log_transaction_compression_stats"
+q2="select sum(SUM_NUMBER_OF_BYTES_WRITE) from performance_schema.file_summary_by_instance where event_name='wait/io/file/sql/binlog'"
+
+dbdeployer deploy single 9.0.1
+
+# We would expect the 2 numbers to be the same !
+./use -N <<< "$q1; $q2"
+5483
+8332
+
+# We would expect both delta to increase by the same amount.
+./use -N <<< "
+    $q1; $q2;
+    drop database if exists test_jfg;
+    create database test_jfg;
+    $q1; $q2"
+7503
+11729
+7741
+12129
+
+# In above, add below to compute the delta.
+...  | paste -s -d " \n" - | awk '{print $1-a, $2-b;a=$1;b=$2}' | tail -n 1
+238 400
+
+. sb_include 
+$BASEDIR/bin/mysqlbinlog data/binlog.000001 
+[...]
+# at 12129
+#240807 15:55:39 server id 1  end_log_pos 12206 CRC32 0x9d6ffbf0 	Anonymous_GTID	last_committed=52	sequence_number=53	rbr_only=no	original_committed_timestamp=1723060539853758	immediate_commit_timestamp=1723060539853758	transaction_length=203
+# original_commit_timestamp=1723060539853758 (2024-08-07 15:55:39.853758 EDT)
+# immediate_commit_timestamp=1723060539853758 (2024-08-07 15:55:39.853758 EDT)
+/*!80001 SET @@session.original_commit_timestamp=1723060539853758*//*!*/;
+/*!80014 SET @@session.original_server_version=90001*//*!*/;
+/*!80014 SET @@session.immediate_server_version=90001*//*!*/;
+SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
+# at 12206
+#240807 15:55:39 server id 1  end_log_pos 12332 CRC32 0x4ae0ef23 	Query	thread_id=22	exec_time=0	error_code=0	Xid = 156
+SET TIMESTAMP=1723060539/*!*/;
+drop database if exists test_jfg
+/*!*/;
+# at 12332
+#240807 15:55:39 server id 1  end_log_pos 12409 CRC32 0x75271658 	Anonymous_GTID	last_committed=53	sequence_number=54	rbr_only=no	original_committed_timestamp=1723060539854542	immediate_commit_timestamp=1723060539854542	transaction_length=197
+# original_commit_timestamp=1723060539854542 (2024-08-07 15:55:39.854542 EDT)
+# immediate_commit_timestamp=1723060539854542 (2024-08-07 15:55:39.854542 EDT)
+/*!80001 SET @@session.original_commit_timestamp=1723060539854542*//*!*/;
+/*!80014 SET @@session.original_server_version=90001*//*!*/;
+/*!80014 SET @@session.immediate_server_version=90001*//*!*/;
+SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
+# at 12409
+#240807 15:55:39 server id 1  end_log_pos 12529 CRC32 0xbb6d178b 	Query	thread_id=22	exec_time=0	error_code=0	Xid = 158
+SET TIMESTAMP=1723060539/*!*/;
+/*!80016 SET @@session.default_table_encryption=0*//*!*/;
+create database test_jfg
+[...]
+
+# In above
+#   12529-12129=400 --> total trx length
+#   12206-12129=77  --> Anonymous_GTID length
+#   400-77-77=246   --> not matching 238, 8 bytes missing ! !
+
+...
+```
+
+Also, off by one error...
+```
+q3="select FILE_NAME,SUM_NUMBER_OF_BYTES_WRITE from performance_schema.file_summary_by_instance where event_name='wait/io/file/sql/binlog'"
+./use -N <<< "flush binary logs; $q3"; ls -l data/binlog.0*
+/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000001	12574
+/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000002	203
+/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000003	203
+/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000004	203
+/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000005	158
+-rw-r-----  1 jf.gagne  staff  12573  7 Aug 16:08 data/binlog.000001
+-rw-r-----  1 jf.gagne  staff    202  7 Aug 16:11 data/binlog.000002
+-rw-r-----  1 jf.gagne  staff    202  7 Aug 16:12 data/binlog.000003
+-rw-r-----  1 jf.gagne  staff    202  7 Aug 16:14 data/binlog.000004
+-rw-r-----  1 jf.gagne  staff    158  7 Aug 16:14 data/binlog.000005
+
+...
+```
+
 ...
 
 
