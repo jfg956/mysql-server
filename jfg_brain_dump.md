@@ -56,9 +56,7 @@ but it would still be good to have a "unified" counter on this.
 
 TODO / WIP: the table `binary_log_transaction_compression_stats` is not reliable,
 more to come...
-
-TODO: add link to below.
-- Table `binary_log_transaction_compression_stats` not reliable
+- [Table `binary_log_transaction_compression_stats` not reliable](#table-binary_log_transaction_compression_stats-not-reliable)
 
 While researching this, and thanks to
 [LeFred post](https://lefred.be/content/query-and-transaction-size-in-mysql/),
@@ -88,21 +86,18 @@ about this in below messages in DBA Slack (not public).
 TODO / WIP: binlogs in `file_summary_by_instance` have a off-by-one error (well,
 maybe not an error, I think a byte in the header is overwritten on closing),
 more to come...
-
-TODO: add link to below.
-- Table `file_summary_by_instance` off-by-one error
+- [Table `file_summary_by_instance` off-by-one error](#table-file_summary_by_instance-off-by-one-error)
 
 Another query to get the number of bytes written to the binlogs is below, but
-unclear if this is "efficient" / "reliable".  Discussed in DBA Slack (not public).
+unclear if this is "efficient" / "reliable".  Discussed in DBA Slack (not public),
+and link to dedicated section here:
 - https://dbachat.slack.com/archives/C027R4PCV/p1722969837544739?thread_ts=1722628897.982989&cid=C027R4PCV
+- [Table `file_summary_by_instance` SUM not strictly increasing](#table-file_summary_by_instance-sum-not-strictly-increasing)
 ```
 select sum(SUM_NUMBER_OF_BYTES_WRITE)
   from performance_schema.file_summary_by_instance
   where event_name='wait/io/file/sql/binlog';
 ```
-
-TODO: add link to below.
-- Table `file_summary_by_instance` SUM not strictly increasing
 
 ...
 
