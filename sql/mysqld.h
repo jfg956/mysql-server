@@ -331,6 +331,7 @@ extern const char *binlog_checksum_type_names[];
 extern bool opt_source_verify_checksum;
 extern bool opt_replica_sql_verify_checksum;
 extern uint32 gtid_executed_compression_period;
+extern bool enforce_replication_compatibility_previous_major_version;
 extern bool binlog_gtid_simple_recovery;
 extern ulong binlog_error_action;
 extern ulong locked_account_connection_count;

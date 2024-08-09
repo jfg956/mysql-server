@@ -8303,22 +8303,26 @@ bool mysql_prepare_create_table(
   calculate_field_offsets(&alter_info->create_list);
 
   /*
-    Auto increment and blob checks.
+    Auto increment, blob and vector checks.
   */
   int auto_increment = 0;
   int blob_columns = 0;
+  int vector_colums = 0;
   it.rewind();
   while ((sql_field = it++)) {
     if (sql_field->auto_flags & Field::NEXT_NUMBER) auto_increment++;
     switch (sql_field->sql_type) {
       case MYSQL_TYPE_GEOMETRY:
       case MYSQL_TYPE_BLOB:
-      case MYSQL_TYPE_VECTOR:
       case MYSQL_TYPE_MEDIUM_BLOB:
       case MYSQL_TYPE_TINY_BLOB:
       case MYSQL_TYPE_LONG_BLOB:
       case MYSQL_TYPE_JSON:
         blob_columns++;
+        break;
+      case MYSQL_TYPE_VECTOR:
+        blob_columns++;
+        vector_colums++;
         break;
       default:
         if (sql_field->is_array) blob_columns++;
@@ -8335,6 +8339,10 @@ bool mysql_prepare_create_table(
   }
   if (blob_columns && (file->ha_table_flags() & HA_NO_BLOBS)) {
     my_error(ER_TABLE_CANT_HANDLE_BLOB, MYF(0));
+    return true;
+  }
+  if (vector_colums && enforce_replication_compatibility_previous_major_version) {
+    my_error(ER_FEATURE_DISABLED_TO_ENFORCE_RPL_COMPAT_PREVIOUS_MAJOR_VERSION, MYF(0), "vector");
     return true;
   }
   /*
