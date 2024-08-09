@@ -27,12 +27,15 @@ No 5. includes other things that might be easy to add to this work, including
 counters to monitor parallel information quality, link below.
 - https://bugs.mysql.com/bug.php?id=85965
 
-
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Note that some binlogs status already exist, links to some below.
 - https://dev.mysql.com/doc/refman/8.4/en/server-status-variables.html#statvar_Binlog_cache_use
 - https://dev.mysql.com/doc/refman/8.4/en/server-status-variables.html#statvar_Binlog_cache_disk_use
+
+TODO: in below, not only MariaDB, this looks also in PS.  I realized that thanks
+to Mark post, link here:
+- https://smalldatum.blogspot.com/2024/08/mysql-regressions-delete-vs-innodb.html
 
 There is some inspiration from MariaDB in this need.  Indeed, MariaDB has two
 counters which matches 1. and 2. above: `BINLOG_BYTES_WRITTEN` and
@@ -42,15 +45,20 @@ myself to read MariaDB docs and test with MariaDB.
 - https://mariadb.com/kb/en/replication-and-binary-log-status-variables/#binlog_bytes_written
 - https://mariadb.com/kb/en/replication-and-binary-log-status-variables/#binlog_commits
 
-I am just realizing that `BINLOG_COMMITS` might be redundant with the sum of below
+2024-08-02: I am just realizing that `BINLOG_COMMITS` might be redundant with the sum of below
 but it would still be good to have a "unified" counter on this.
 - https://dev.mysql.com/doc/refman/8.4/en/server-status-variables.html#statvar_Binlog_cache_disk_use
 - https://dev.mysql.com/doc/refman/8.4/en/server-status-variables.html#statvar_Binlog_cache_use
 - https://dev.mysql.com/doc/refman/8.4/en/server-status-variables.html#statvar_Binlog_stmt_cache_disk_use
 - https://dev.mysql.com/doc/refman/8.4/en/server-status-variables.html#statvar_Binlog_stmt_cache_use
 
-
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+TODO / WIP: the table `binary_log_transaction_compression_stats` is not reliable,
+more to come...
+
+TODO: add link to below.
+- Table `binary_log_transaction_compression_stats` not reliable
 
 While researching this, and thanks to
 [LeFred post](https://lefred.be/content/query-and-transaction-size-in-mysql/),
@@ -65,7 +73,6 @@ inspiration from the code used to populate it to implement this work.
 I asked DBA friends about initial feedback on this work, link below.
 - https://dbachat.slack.com/archives/C027R4PCV/p1722628897982989
 
-
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 <a name="p_s_crash_bltcs"></a>
@@ -78,8 +85,15 @@ about this in below messages in DBA Slack (not public).
 - https://dbachat.slack.com/archives/D0479SMDS4Q/p1722966419772569
 - https://dbachat.slack.com/archives/C027R4PCV/p1722967438113609?thread_ts=1722628897.982989&cid=C027R4PCV
 
+TODO / WIP: binlogs in `file_summary_by_instance` have a off-by-one error (well,
+maybe not an error, I think a byte in the header is overwritten on closing),
+more to come...
+
+TODO: add link to below.
+- Table `file_summary_by_instance` off-by-one error
+
 Another query to get the number of bytes written to the binlogs is below, but
-unclear if this is "efficient".  Discussed in DBA Slack (not public).
+unclear if this is "efficient" / "reliable".  Discussed in DBA Slack (not public).
 - https://dbachat.slack.com/archives/C027R4PCV/p1722969837544739?thread_ts=1722628897.982989&cid=C027R4PCV
 ```
 select sum(SUM_NUMBER_OF_BYTES_WRITE)
@@ -87,117 +101,8 @@ select sum(SUM_NUMBER_OF_BYTES_WRITE)
   where event_name='wait/io/file/sql/binlog';
 ```
 
-According to below, there is an index in above on `EVENT_NAME`.
-- https://dev.mysql.com/doc/refman/8.0/en/performance-schema-file-summary-tables.html
-
-But below shows the result is not strictly-increasing, so un-usable
-(purging a 1 kb binlog while writing 2 kb will show 1 kb written):
-```
-t="from performance_schema.file_summary_by_instance"
-w="where event_name='wait/io/file/sql/binlog'"
-q1="select FILE_NAME $t $w"
-q2="select sum(SUM_NUMBER_OF_BYTES_WRITE) $t $w"
-./use -N <<< "
-  $q1; $q2;
-  flush binary logs;
-  $q1; $q2;
-  do sleep(1); purge binary logs BEFORE now();
-  $q1; $q2;"
-~/sandboxes/msb_9_0_1/data/binlog.000001
-8336
-~/sandboxes/msb_9_0_1/data/binlog.000001
-~/sandboxes/msb_9_0_1/data/binlog.000002
-8539
-~/sandboxes/msb_9_0_1/data/binlog.000002
-158
-```
-
-Realized after code exploration, the content of
-`binary_log_transaction_compression_stats` does not match
-`file_summary_by_instance`...
-
-```
-q1="select UNCOMPRESSED_BYTES_COUNTER from performance_schema.binary_log_transaction_compression_stats"
-q2="select sum(SUM_NUMBER_OF_BYTES_WRITE) from performance_schema.file_summary_by_instance where event_name='wait/io/file/sql/binlog'"
-
-dbdeployer deploy single 9.0.1
-
-# We would expect the 2 numbers to be the same !
-./use -N <<< "$q1; $q2"
-5483
-8332
-
-# We would expect both delta to increase by the same amount.
-./use -N <<< "
-    $q1; $q2;
-    drop database if exists test_jfg;
-    create database test_jfg;
-    $q1; $q2"
-7503
-11729
-7741
-12129
-
-# In above, add below to compute the delta.
-...  | paste -s -d " \n" - | awk '{print $1-a, $2-b;a=$1;b=$2}' | tail -n 1
-238 400
-
-. sb_include 
-$BASEDIR/bin/mysqlbinlog data/binlog.000001 
-[...]
-# at 12129
-#240807 15:55:39 server id 1  end_log_pos 12206 CRC32 0x9d6ffbf0 	Anonymous_GTID	last_committed=52	sequence_number=53	rbr_only=no	original_committed_timestamp=1723060539853758	immediate_commit_timestamp=1723060539853758	transaction_length=203
-# original_commit_timestamp=1723060539853758 (2024-08-07 15:55:39.853758 EDT)
-# immediate_commit_timestamp=1723060539853758 (2024-08-07 15:55:39.853758 EDT)
-/*!80001 SET @@session.original_commit_timestamp=1723060539853758*//*!*/;
-/*!80014 SET @@session.original_server_version=90001*//*!*/;
-/*!80014 SET @@session.immediate_server_version=90001*//*!*/;
-SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
-# at 12206
-#240807 15:55:39 server id 1  end_log_pos 12332 CRC32 0x4ae0ef23 	Query	thread_id=22	exec_time=0	error_code=0	Xid = 156
-SET TIMESTAMP=1723060539/*!*/;
-drop database if exists test_jfg
-/*!*/;
-# at 12332
-#240807 15:55:39 server id 1  end_log_pos 12409 CRC32 0x75271658 	Anonymous_GTID	last_committed=53	sequence_number=54	rbr_only=no	original_committed_timestamp=1723060539854542	immediate_commit_timestamp=1723060539854542	transaction_length=197
-# original_commit_timestamp=1723060539854542 (2024-08-07 15:55:39.854542 EDT)
-# immediate_commit_timestamp=1723060539854542 (2024-08-07 15:55:39.854542 EDT)
-/*!80001 SET @@session.original_commit_timestamp=1723060539854542*//*!*/;
-/*!80014 SET @@session.original_server_version=90001*//*!*/;
-/*!80014 SET @@session.immediate_server_version=90001*//*!*/;
-SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
-# at 12409
-#240807 15:55:39 server id 1  end_log_pos 12529 CRC32 0xbb6d178b 	Query	thread_id=22	exec_time=0	error_code=0	Xid = 158
-SET TIMESTAMP=1723060539/*!*/;
-/*!80016 SET @@session.default_table_encryption=0*//*!*/;
-create database test_jfg
-[...]
-
-# In above
-#   12529-12129=400 --> total trx length
-#   12206-12129=77  --> Anonymous_GTID length
-#   400-77-77=246   --> not matching 238, 8 bytes missing ! !
-
-...
-```
-
-Also, off by one error...
-```
-q3="select FILE_NAME,SUM_NUMBER_OF_BYTES_WRITE from performance_schema.file_summary_by_instance where event_name='wait/io/file/sql/binlog'"
-./use -N <<< "flush binary logs; $q3"; ls -l data/binlog.0*
-/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000001	12574
-/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000002	203
-/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000003	203
-/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000004	203
-/Users/jf.gagne/sandboxes/msb_9_0_1/data/binlog.000005	158
--rw-r-----  1 jf.gagne  staff  12573  7 Aug 16:08 data/binlog.000001
--rw-r-----  1 jf.gagne  staff    202  7 Aug 16:11 data/binlog.000002
--rw-r-----  1 jf.gagne  staff    202  7 Aug 16:12 data/binlog.000003
--rw-r-----  1 jf.gagne  staff    202  7 Aug 16:14 data/binlog.000004
--rw-r-----  1 jf.gagne  staff    158  7 Aug 16:14 data/binlog.000005
-
-...
-```
+TODO: add link to below.
+- Table `file_summary_by_instance` SUM not strictly increasing
 
 ...
 
@@ -269,5 +174,146 @@ statuses would be incremented in `update_binary`.
 ...
 
 
-<!-- EOF -->
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
+### Table `binary_log_transaction_compression_stats` not reliable
+
+...
+
+Realized after code exploration, the content of
+`binary_log_transaction_compression_stats` does not match
+`file_summary_by_instance`...
+
+```
+q1="select UNCOMPRESSED_BYTES_COUNTER from performance_schema.binary_log_transaction_compression_stats"
+q2="select sum(SUM_NUMBER_OF_BYTES_WRITE) from performance_schema.file_summary_by_instance where event_name='wait/io/file/sql/binlog'"
+
+dbdeployer deploy single 9.0.1
+
+# We would expect the 2 numbers to be the same !
+./use -N <<< "$q1; $q2"
+5483
+8332
+
+# We would expect both delta to increase by the same amount.
+./use -N <<< "
+    $q1; $q2;
+    drop database if exists test_jfg;
+    create database test_jfg;
+    $q1; $q2"
+7503
+11729
+7741
+12129
+
+# In above, add below to compute the delta.
+...  | paste -s -d " \n" - | awk '{print $1-a, $2-b;a=$1;b=$2}' | tail -n 1
+238 400
+
+. sb_include 
+$BASEDIR/bin/mysqlbinlog data/binlog.000001 
+[...]
+# at 12129
+#240807 15:55:39 server id 1  end_log_pos 12206 CRC32 0x9d6ffbf0 	Anonymous_GTID	last_committed=52	sequence_number=53	rbr_only=no	original_committed_timestamp=1723060539853758	immediate_commit_timestamp=1723060539853758	transaction_length=203
+# original_commit_timestamp=1723060539853758 (2024-08-07 15:55:39.853758 EDT)
+# immediate_commit_timestamp=1723060539853758 (2024-08-07 15:55:39.853758 EDT)
+/*!80001 SET @@session.original_commit_timestamp=1723060539853758*//*!*/;
+/*!80014 SET @@session.original_server_version=90001*//*!*/;
+/*!80014 SET @@session.immediate_server_version=90001*//*!*/;
+SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
+# at 12206
+#240807 15:55:39 server id 1  end_log_pos 12332 CRC32 0x4ae0ef23 	Query	thread_id=22	exec_time=0	error_code=0	Xid = 156
+SET TIMESTAMP=1723060539/*!*/;
+drop database if exists test_jfg
+/*!*/;
+# at 12332
+#240807 15:55:39 server id 1  end_log_pos 12409 CRC32 0x75271658 	Anonymous_GTID	last_committed=53	sequence_number=54	rbr_only=no	original_committed_timestamp=1723060539854542	immediate_commit_timestamp=1723060539854542	transaction_length=197
+# original_commit_timestamp=1723060539854542 (2024-08-07 15:55:39.854542 EDT)
+# immediate_commit_timestamp=1723060539854542 (2024-08-07 15:55:39.854542 EDT)
+/*!80001 SET @@session.original_commit_timestamp=1723060539854542*//*!*/;
+/*!80014 SET @@session.original_server_version=90001*//*!*/;
+/*!80014 SET @@session.immediate_server_version=90001*//*!*/;
+SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
+# at 12409
+#240807 15:55:39 server id 1  end_log_pos 12529 CRC32 0xbb6d178b 	Query	thread_id=22	exec_time=0	error_code=0	Xid = 158
+SET TIMESTAMP=1723060539/*!*/;
+/*!80016 SET @@session.default_table_encryption=0*//*!*/;
+create database test_jfg
+[...]
+
+# In above
+#   12529-12129=400 --> total trx length
+#   12206-12129=77  --> Anonymous_GTID length
+#   400-77-77=246   --> not matching 238, 8 bytes missing ! !
+
+...
+```
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Table `file_summary_by_instance` off-by-one error
+
+...
+
+```
+q="select FILE_NAME,SUM_NUMBER_OF_BYTES_WRITE from performance_schema.file_summary_by_instance where event_name='wait/io/file/sql/binlog'"
+./use -N <<< "flush binary logs; $q"; ls -l data/binlog.0*
+~/sandboxes/msb_9_0_1/data/binlog.000001	12574
+~/sandboxes/msb_9_0_1/data/binlog.000002	203
+~/sandboxes/msb_9_0_1/data/binlog.000003	203
+~/sandboxes/msb_9_0_1/data/binlog.000004	203
+~/sandboxes/msb_9_0_1/data/binlog.000005	158
+-rw-r-----  1 jgagne  staff  12573  7 Aug 16:08 data/binlog.000001
+-rw-r-----  1 jgagne  staff    202  7 Aug 16:11 data/binlog.000002
+-rw-r-----  1 jgagne  staff    202  7 Aug 16:12 data/binlog.000003
+-rw-r-----  1 jgagne  staff    202  7 Aug 16:14 data/binlog.000004
+-rw-r-----  1 jgagne  staff    158  7 Aug 16:14 data/binlog.000005
+```
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Table `file_summary_by_instance` SUM not strictly increasing
+
+...
+
+```
+select sum(SUM_NUMBER_OF_BYTES_WRITE)
+  from performance_schema.file_summary_by_instance
+  where event_name='wait/io/file/sql/binlog';
+```
+
+According to below, there is an index in above on `EVENT_NAME`.
+- https://dev.mysql.com/doc/refman/8.0/en/performance-schema-file-summary-tables.html
+
+But below shows the result is not strictly-increasing, so un-usable
+(purging a 1 kb binlog while writing 2 kb will show 1 kb written):
+```
+t="from performance_schema.file_summary_by_instance"
+w="where event_name='wait/io/file/sql/binlog'"
+q1="select FILE_NAME $t $w"
+q2="select sum(SUM_NUMBER_OF_BYTES_WRITE) $t $w"
+./use -N <<< "
+  $q1; $q2;
+  flush binary logs;
+  $q1; $q2;
+  do sleep(1); purge binary logs BEFORE now();
+  $q1; $q2;"
+~/sandboxes/msb_9_0_1/data/binlog.000001
+8336
+~/sandboxes/msb_9_0_1/data/binlog.000001
+~/sandboxes/msb_9_0_1/data/binlog.000002
+8539
+~/sandboxes/msb_9_0_1/data/binlog.000002
+158
+```
+
+...
+
+
+<!-- EOF -->
