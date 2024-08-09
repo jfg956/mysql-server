@@ -1,3 +1,16 @@
+--- Begin of branch notes.
+
+More about this work in https://github.com/jfg956/mysql-server/blob/mysql-9.0.1_explo_explo_enforce_rpl_compat/jfg_brain_dump.md.
+
+...
+
+To create a PR:
+- https://github.com/jfg956/mysql-server/pull/new/mysql-9.0.1_explo_enforce_rpl_compat
+
+...
+
+--- End of branch notes.
+
 Copyright (c) 2000, 2024, Oracle and/or its affiliates.
 
 This is a release of MySQL, an SQL database server.
