@@ -16,6 +16,21 @@
 
 ...
 
+... Facebook Migration to 8.0, Replication failure:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1_explo_enforce_rpl_compat/jfg_meta_8.0_migration_slide.png
+- https://www.youtube.com/watch?v=Cm5QXwXI0dU&t=1898s
+- (^^ DDL with JSON in 8.0, breaks 5.6)
+- (^^ also XA starting to generate new things in 8.0, not understood in 5.6, and broken in 8.0 --> single instance)
+- https://www.facebook.com/hermanlee4
+- https://www.facebook.com/pradeepnayak
+- https://www.linkedin.com/in/hermanlee098/
+- https://www.linkedin.com/in/pradeep1288/
+- https://percona.community/events/percona-live-2022/
+- https://perconalive2022.sched.com/event/10KG1/migrating-meta-to-mysql-80
+- ...
+
+...
+
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
