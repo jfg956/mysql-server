@@ -31,6 +31,9 @@
 
 ...
 
+enforce_replication_compatibility_previous_major_version
+
+...
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
@@ -88,6 +91,21 @@ mysql [localhost:9001] {msandbox} ((none)) > show global variables like 'enforce
 TODO: s/TRUE/ON/ in error message...
 
 ...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Other Notes
+
+...
+
+#### Modified files:
+
+```
+fs="$(echo sql/{mysqld.{cc,h},sql_table.cc,sys_vars.cc})"
+fs="$fs share/messages_to_clients.txt"
+
+```
 
 
 <!-- EOF -->
