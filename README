@@ -1,3 +1,16 @@
+--- Begin of branch notes.
+
+More about this work in https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/jfg_brain_dump.md.
+
+...
+
+To create a PR:
+- https://github.com/jfg956/mysql-server/pull/new/8.0.39_explo_startup_many_tables
+
+...
+
+--- End of branch notes.
+
 Copyright (c) 2000, 2024, Oracle and/or its affiliates.
 
 This is a release of MySQL, an SQL database server.
