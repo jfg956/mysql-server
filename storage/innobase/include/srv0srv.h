@@ -400,6 +400,9 @@ extern bool srv_numa_interleave;
 deliminated by ';', i.e the FIL_PATH_SEPARATOR. */
 extern char *srv_innodb_directories;
 
+/* Documented in storage/innobase/handler/ha_innodb.cc. */
+extern int srv_tablespace_duplicate_check_threads;
+
 /** Server undo tablespaces directory, can be absolute path. */
 extern char *srv_undo_dir;
 
