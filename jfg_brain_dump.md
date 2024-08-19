@@ -26,6 +26,26 @@ In `Tablespace_dirs::scan`, `size_t n_threads = fil_get_scan_threads(ibd_files.s
 
 ...
 
+Tablespace Path Validation, `Validate_files::validate`:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/storage/innobase/handler/ha_innodb.cc#L3787
+
+^^ call `Validate_files::check` via par_for:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/storage/innobase/handler/ha_innodb.cc#L3425
+
+`Validate_files::validate` called here:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/storage/innobase/handler/ha_innodb.cc#L3879
+
+"Reading DD tablespace files", which can take time, in this:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/storage/innobase/handler/ha_innodb.cc#L3872
+
+^^ calls `Dictionary_client::fetch_global_components`:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/sql/dd/impl/cache/dictionary_client.cc#L2250
+
+^^ calls `Dictionary_client::fetch`:
+- https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/sql/dd/impl/cache/dictionary_client.cc#L2033
+
+...
+
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 

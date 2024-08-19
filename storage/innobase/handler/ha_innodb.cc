@@ -3435,9 +3435,13 @@ void Validate_files::check(const Const_iter &begin, const Const_iter &end,
   tablespaces. If all the conditions mentioned above are false then
   validate only undo tablespaces */
 
+  /* TODO: this is code duplication with Validate_files::validate, check comment there. */
   const bool ibd_validate =
       srv_validate_tablespace_paths || recv_needed_recovery || !ibuf_is_empty();
 
+  /* TODO: this should be removed, because this is debug logging !
+   * From what I see, this is used as a prefix of some logs, not all.
+   * In info, warn or error logging, we do not care which thread generates a log ! */
   std::string prefix;
   if (m_n_threads > 0) {
     std::ostringstream msg;
@@ -3448,6 +3452,9 @@ void Validate_files::check(const Const_iter &begin, const Const_iter &end,
   for (auto it = begin; it != end; ++it) {
     const auto &dd_tablespace = *it;
 
+    /* TODO: there is a race-condition here !
+     * Two threads could evaluate the condition at the same time and get in the if.
+     * Arguably, the impact of this is low (duplicate logging) but should eventually be fixed. */
     if (std::chrono::steady_clock::now() - m_start_time.load() >=
         PRINT_INTERVAL) {
       m_start_time = std::chrono::steady_clock::now();
@@ -3455,7 +3462,7 @@ void Validate_files::check(const Const_iter &begin, const Const_iter &end,
       std::ostringstream msg;
 
       if (m_n_threads) {
-        msg << m_n_threads << "threads have validated ";
+        msg << m_n_threads << " threads have validated ";
       } else {
         msg << "Validated ";
       }
@@ -3789,6 +3796,10 @@ dberr_t Validate_files::validate(const DD_tablespaces &tablespaces) {
   m_n_threads = fil_get_scan_threads(m_n_to_check);
   m_start_time = std::chrono::steady_clock::now();
 
+  /* TODO: remove code duplication and more !
+   * There is code duplication here and in Validate_files::check.
+   * Remove this duplicate logic
+   *   and maybe do not spawn threads is we only valide undo files. */
   if (!srv_validate_tablespace_paths && !recv_needed_recovery &&
       ibuf_is_empty()) {
     ib::info(ER_IB_TABLESPACE_PATH_VALIDATION_SKIPPED);
@@ -3869,6 +3880,7 @@ dberr_t Validate_files::validate(const DD_tablespaces &tablespaces) {
 
   ib::info(ER_IB_MSG_532) << "Reading DD tablespace files";
 
+  /* TODO: below can take time, add progress logging. */
   if (dc->fetch_global_components(&tablespaces)) {
     /* Failed to fetch the tablespaces from the DD. */
 
