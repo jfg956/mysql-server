@@ -9968,6 +9968,15 @@ ER_VALIDATE_PASSWORD_INSUFFICIENT_CHANGED_CHARACTERS
 ER_WARN_DEPRECATED_WITH_NOTE
   eng "'%s' is deprecated and will be removed in a future release. %s"
 
+# This message is introduced in 9.0, but because it would be suitable to backport the
+#   feature enforce_replication_compatibility_previous_major_version to 8.4 and 8.0,
+#   putting this message in the 8.0 section.
+# The name should be
+#   ER_FEATURE_DISABLED_TO_ENFORCE_REPLICATION_COMPATIBILITY_PREVIOUS_MAJOR_VERSION
+#   but this is 79 characters, sticking to 64 or less
+ER_FEATURE_DISABLED_TO_ENFORCE_RPL_COMPAT_PREVIOUS_MAJOR_VERSION
+  eng "the '%s' feature is disabled when enforce_replication_compatibility_previous_major_version = TRUE."
+
 #
 #  End of 8.0 error messages (server-to-client).
 #

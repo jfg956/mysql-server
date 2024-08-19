@@ -6272,6 +6272,15 @@ const char *fixup_enforce_gtid_consistency_command_line(char *value_arg) {
   return Sys_enforce_gtid_consistency.fixup_command_line(value_arg);
 }
 
+static Sys_var_bool Sys_enforce_replication_compatibility_previous_major_version(
+    "enforce_replication_compatibility_previous_major_version",
+    "Prevents execution of statements that would cause replication to "
+    "the previous major version to break.",
+    GLOBAL_VAR(enforce_replication_compatibility_previous_major_version),
+    CMD_LINE(OPT_ARG), DEFAULT(false),
+    NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(nullptr),
+    ON_UPDATE(nullptr));
+
 static Sys_var_bool Sys_binlog_gtid_simple_recovery(
     "binlog_gtid_simple_recovery",
     "If this option is enabled, the server does not open more than "
