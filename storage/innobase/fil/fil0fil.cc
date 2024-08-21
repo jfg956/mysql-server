@@ -11176,6 +11176,8 @@ void Tablespace_dirs::duplicate_check(const Const_iter &start,
 
     ++count;
 
+    /* TODO: in updated below, if we are very unlucky, thread_id 0 could finish early,
+     *   which would break logging.  A way to fix this is in Validate_files::check in storage/innobase/handler/ha_innodb.cc. */
     /* "Thread#" removed from below,
      *   because thread id is debug logging, not useful to to an operator.
      * Also, removed duplicate call to std::chrono::steady_clock::now(),
