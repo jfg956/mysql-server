@@ -50,7 +50,7 @@ About d2, in info logging, it is more complicated:
 - ^^: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L592
 - from 17:09:11 to 17:10:04: validating tablespaces,
 - ^^ starts here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L593
-- ^^ ends here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L599C12-L599C20
+- ^^ ends here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L599
 
 The "validating" part is called [InnoDB] Tablespace Path Validation (I use
 Path Validation for short):
@@ -61,7 +61,19 @@ There is a way to disable Path Validation:
 - link to ^^: https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_validate_tablespace_paths
 
 Info logging with Path Validation disabled:
-- ...
+- https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info_wo_valid
+
+And even in above, we have a sub-delay of d2, let's call it delay #2.1 (d2.1):
+- in "Reading DD tablespace files"
+- from 17:22:29 to 17:23:18
+- direct link: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info_wo_valid#L592
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+Unrelated, weird crash messages:
+- https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L605
+
+Bug report for above: https://bugs.mysql.com/bug.php?id=115886
 
 ...
 
@@ -100,6 +112,36 @@ Tablespace Path Validation, `Validate_files::validate`:
 
 ^^ calls `Dictionary_client::fetch`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/sql/dd/impl/cache/dictionary_client.cc#L2033
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Historical Notes
+
+#### History of Duplicate Check
+
+...
+
+
+#### History of Path Validation
+
+`innodb_validate_tablespace_paths` introduced in 8.0.21:
+- https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_validate_tablespace_paths
+
+In 8.0.24, from no validation to validating undo:
+- https://github.com/mysql/mysql-server/commit/eef88fb2565a0fd9d9b123ce4c7c969f678f6831
+
+Crash if more than 8k tables of 8.0.38, 8.4.1 and 9.0.0:
+- https://github.com/mysql/mysql-server/commit/28eb1ff112777406cd6587231341b9b47167f9f1
+- caused by using `current_thd` in a sub-thread in `storage/innobase/handler/ha_innodb.cc`.
+
+Fix crash:
+- https://github.com/mysql/mysql-server/commit/19ff2707c448efc6b85429b42e5eabe242ddd0a6
+
+Making multi-threading actually working:
+- https://github.com/mysql/mysql-server/commit/8bc6454bfd8fc676aa047332b6c41c76a89c4357
 
 ...
 
