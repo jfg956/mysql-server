@@ -8,6 +8,40 @@
 
 ...
 
+MySQL 8.0.39 with 1M tables takes 0:13:57 to start (it remember correctly, this
+is on a default gp3 EBS volume --> 3k iops and 125 mbps).
+
+Below is the log with `log_error_verbosity = 3` (I will call this info logging
+in this doc; I do not have one with 2 as I am writting this):
+- https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+I ran below command to simulate `log_error_verbosity = 2` (I will call this warning
+logging in this doc), and got the below:
+- `cat ./msandbox.err_8.0.39_restart_1m_info | awk '$3 != "[Note]"'`
+- https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info_notes_filtered
+
+In filtered above, we have:
+```
+2024-08-04T16:56:14.149844Z mysqld_safe Logging to '/home/jgagne/sandboxes/msb_mysql_8_0_39/data/msandbox.err'.
+[...]
+2024-08-04T16:56:18.716424Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2024-08-04T17:08:12.882285Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2024-08-04T17:10:09.190339Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+[...]
+2024-08-04T17:10:09.259879Z 0 [System] [MY-010931] [Server] /home/jgagne/opt/mysql/mysql_8.0.39/bin/mysqld: ready for connections. [...]
+```
+
+In above, we have 2 main delays:
+- 16:56:18 to 17:08:12: let's call this delay #1 (d1),
+- 17:08:12 to 17:10:09: let's call this delay #2 (d2).
+
+...
+
+...this what I call InnoDB Tablespace Duplicate Check (Duplicate Check for short),
+
+...
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
