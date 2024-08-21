@@ -34,14 +34,37 @@ In filtered above, we have:
 ```
 
 In above, we have 2 main delays:
-- 16:56:18 to 17:08:12: let's call this delay #1 (d1),
-- 17:08:12 to 17:10:09: let's call this delay #2 (d2).
+- from 16:56:18 to 17:08:12: let's call this delay #1 (d1),
+- from 17:08:12 to 17:10:09: let's call this delay #2 (d2).
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+About d1, in info logging:
+- it starts here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L20
+- it ends here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L563C18-L563C21
+
+Let's call d1 InnoDB Tablespace Duplicate Check (Duplicate Check for short).
+
+About d2, in info logging, it is more complicated:
+- from 17:08:13 to 17:09:11: "Reading DD tablespace files",
+- ^^: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L592
+- from 17:09:11 to 17:10:04: validating tablespaces,
+- ^^ starts here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L593
+- ^^ ends here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L599C12-L599C20
+
+The "validating" part is called [InnoDB] Tablespace Path Validation (I use
+Path Validation for short):
+- https://dev.mysql.com/doc/refman/8.0/en/innodb-disabling-tablespace-path-validation.html
+
+There is a way to disable Path Validation:
+- `innodb_validate_tablespace_paths = OFF`
+- link to ^^: https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_validate_tablespace_paths
+
+Info logging with Path Validation disabled:
+- ...
 
 ...
 
-...this what I call InnoDB Tablespace Duplicate Check (Duplicate Check for short),
-
-...
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
