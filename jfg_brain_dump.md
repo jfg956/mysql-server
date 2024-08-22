@@ -75,6 +75,10 @@ Unrelated, weird crash messages:
 
 Bug report for above: https://bugs.mysql.com/bug.php?id=115886
 
+While doing startup tests with 8.0.39 and 1M tables on a 4 GB vm, oom !
+
+TODO: add link to section "RAM Consumption and Many Tables".
+
 ...
 
 
@@ -151,6 +155,56 @@ Making multi-threading actually working:
 ### Other Notes
 
 ...
+
+#### RAM Consumption and Many Tables
+
+```
+for v in 5.6.51 5.7.44 8.0.39 9.0.1; do
+  echo; echo $v
+
+  cd; dbdeployer deploy single mysql_$v > /dev/null
+  cd ~/sandboxes/msb_mysql_${v//./_}
+
+  echo Empty: "$(grep -e VmPeak -e VmSize -e VmRSS /proc/$(pgrep mysqld$)/status | paste -s)"
+
+  ./stop > /dev/null
+  rm -rf data
+  pv -te -N tgz ../mysql_$v.data.1000000.tgz | tar -zx
+  ./start | pv -t -N start > /dev/null
+
+  echo Full: "$(grep -e VmPeak -e VmSize -e VmRSS /proc/$(pgrep mysqld$)/status | paste -s)"
+
+  ./stop > /dev/null
+  cd; rm -rf ~/sandboxes/msb_mysql_${v//./_}
+done
+
+# Result for m6id.xlarge (4 vcpu).
+5.6.51
+Empty: VmPeak:   1297932 kB     VmSize:  1297932 kB     VmRSS:    476416 kB
+      tgz: 0:12:34
+    start: 0:02:11
+Full: VmPeak:    2701860 kB     VmSize:  2636324 kB     VmRSS:   2006000 kB
+
+5.7.44
+Empty: VmPeak:   1310828 kB     VmSize:  1245292 kB     VmRSS:    205212 kB
+      tgz: 0:12:37
+    start: 0:01:34
+Full: VmPeak:    3526548 kB     VmSize:  3461012 kB     VmRSS:   2539172 kB
+
+8.0.39
+Empty: VmPeak:   2080564 kB     VmSize:  2080564 kB     VmRSS:    398916 kB
+      tgz: 0:13:06
+    start: 0:02:38
+Full: VmPeak:    6308916 kB     VmSize:  6243380 kB     VmRSS:   4834068 kB
+
+9.0.1
+Empty: VmPeak:   2050624 kB     VmSize:  1985088 kB     VmRSS:    482428 kB
+      tgz: 0:13:02
+    start: 0:02:38
+Full: VmPeak:    6033196 kB     VmSize:  5967660 kB     VmRSS:   4927584 kB
+```
+...
+
 
 #### Modified files:
 
