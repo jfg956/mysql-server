@@ -3373,6 +3373,7 @@ class Validate_files {
   from the known directories.
   3. Update the DD if a tablespace has moved.
   4. Update the DD if an undo tablespace was truncated and replaced.
+  TODO: below is not up-to-date and does not take into account the ibuf logic.
   5. If innodb_validate_tablespace_paths is set and this is not called
   while in recovery, only validate undo tablespaces.
   6. Track the number of skipped, moved, missing and deleted tablespaces.
@@ -3758,6 +3759,11 @@ void Validate_files::check(const Const_iter &begin, const Const_iter &end,
       continue;
     }
 
+    /* TODO: this validate is documented as follow in storage/innobase/include/fil0fil.h:
+     *    whether we should validate the tablespace (read the first page of the file and
+     *       check that the space id in it matches id)
+     * This looks very similar to what is done in Duplicate Check.
+     * Would we be doing this twice in crash-recovery ? */
     /* The IBD filename from the DD has not yet been opened. Try to open it.
     It's safe to pass space_name in tablename charset because filename is
     already in filename charset. */
