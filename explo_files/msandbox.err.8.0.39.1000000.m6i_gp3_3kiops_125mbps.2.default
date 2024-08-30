@@ -1,0 +1,9 @@
+2024-08-26T02:12:54.209842Z mysqld_safe Logging to '/home/jgagne/sandboxes/msb_mysql_8_0_39/data/msandbox.err'.
+2024-08-26T02:12:54.282572Z mysqld_safe Starting mysqld daemon with databases from /home/jgagne/sandboxes/msb_mysql_8_0_39/data
+2024-08-26T02:12:57.668709Z 0 [System] [MY-010116] [Server] /home/jgagne/opt/mysql/mysql_8.0.39/bin/mysqld (mysqld 8.0.39) starting as process 66873
+2024-08-26T02:12:58.409124Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2024-08-26T02:19:00.014759Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2024-08-26T02:20:03.386016Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2024-08-26T02:20:03.386062Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2024-08-26T02:20:03.545458Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 18039, socket: /tmp/mysqlx-18039.sock
+2024-08-26T02:20:03.545591Z 0 [System] [MY-010931] [Server] /home/jgagne/opt/mysql/mysql_8.0.39/bin/mysqld: ready for connections. Version: '8.0.39'  socket: '/tmp/mysql_sandbox8039.sock'  port: 8039  MySQL Community Server - GPL.

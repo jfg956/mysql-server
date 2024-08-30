@@ -8,8 +8,24 @@
 
 ...
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Analysis
+
+#### V1 - Old and Partial
+
+(Old because probably on t3a, and partical because warn log extrapolated from info)
+
+(This analysis defines 3 names:)
+- InnoDB Tablespace Duplicate Check ([Duplicate Check](#name_duplicate_check) for short);
+- [InnoDB] Tablespace Path Validation (I use [Path Validation](#name_path_validation) for short);
+- Data Dictionnary Tablespace File Reading ([DD Reading](name_dd_reading) for short).
+
 MySQL 8.0.39 with 1M tables takes 0:13:57 to start (it remember correctly, this
 is on a default gp3 EBS volume --> 3k iops and 125 mbps).
+
+(Note to delf from the future: probably on a t3a, because on a m6i and gp3
+3 kiops and 125 MB/s, I see startup in 0:07:10 for 2 vcup and 0:06:53 with 4)
 
 Below is the log with `log_error_verbosity = 3` (I will call this info logging
 in this doc; I do not have one with 2 as I am writting this):
@@ -43,6 +59,7 @@ About d1, in info logging:
 - it starts here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L20
 - it ends here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L563C18-L563C21
 
+<a name="name_duplicate_check"></a>
 Let's call d1 InnoDB Tablespace Duplicate Check (Duplicate Check for short).
 
 About d2, in info logging, it is more complicated:
@@ -52,6 +69,7 @@ About d2, in info logging, it is more complicated:
 - ^^ starts here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L593
 - ^^ ends here: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info#L599
 
+<a name="name_path_validation"></a>
 The "validating" part is called [InnoDB] Tablespace Path Validation (I use
 Path Validation for short):
 - https://dev.mysql.com/doc/refman/8.0/en/innodb-disabling-tablespace-path-validation.html
@@ -68,6 +86,9 @@ And even in above, we have a sub-delay of d2, let's call it delay #2.1 (d2.1):
 - from 17:22:29 to 17:23:18
 - direct link: https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err_8.0.39_restart_1m_info_wo_valid#L592
 
+<a name="name_dd_reading"></a>
+Let's call d2.1 Data Dictionnary Tablespace File Reading (DD Reading for short).
+
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Unrelated, weird crash messages:
@@ -75,8 +96,80 @@ Unrelated, weird crash messages:
 
 Bug report for above: https://bugs.mysql.com/bug.php?id=115886
 
-While doing startup tests with 8.0.39 and 1M tables on a 4 GB vm, oom !
-More about this in the section [RAM Consumption and Many Tables](#ram-consumption-and-many-tables}.
+While doing startup tests with 8.0.39 and 1M tables on a 1vcup & 4 GB vm, oom !
+More about this in the section [RAM Consumption and Many Tables](#ram-consumption-and-many-tables).
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### V2 - More Recent
+
+...
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/results_m6i_gp3_3kiops_125mbps.txt
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/results_m6i_gp3_12kiops_500mbps.txt
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/results_local_ssd.txt
+
+...
+
+```
+cat explo_files/results_m6i_gp3_3kiops_125mbps.txt |
+  grep "[89].0.*1000000" |
+  grep -e default -e info -e no_val |
+  grep -v resto
+ 8.0.39 1000000        2.default      start: 0:07:10
+ 8.0.39 1000000           2.info      start: 0:07:11
+ 8.0.39 1000000         2.no_val      start: 0:06:32
+  9.0.1 1000000        2.default      start: 0:07:09
+  9.0.1 1000000           2.info      start: 0:07:09
+  9.0.1 1000000         2.no_val      start: 0:06:32
+ 8.0.39 1000000        4.default      start: 0:06:53
+ 8.0.39 1000000           4.info      start: 0:06:53
+ 8.0.39 1000000         4.no_val      start: 0:06:29
+  9.0.1 1000000        4.default      start: 0:06:52
+  9.0.1 1000000           4.info      start: 0:06:52
+  9.0.1 1000000         4.no_val      start: 0:06:30
+
+# 12kiops_500mbps.
+ 8.0.39 1000000        2.default      start: 0:04:07
+ 8.0.39 1000000           2.info      start: 0:04:04
+ 8.0.39 1000000         2.no_val      start: 0:03:31
+  9.0.1 1000000        2.default      start: 0:04:05
+  9.0.1 1000000           2.info      start: 0:04:07
+  9.0.1 1000000         2.no_val      start: 0:03:32
+ 8.0.39 1000000        4.default      start: 0:02:42
+ 8.0.39 1000000           4.info      start: 0:02:43
+ 8.0.39 1000000         4.no_val      start: 0:02:19
+  9.0.1 1000000        4.default      start: 0:02:42
+  9.0.1 1000000           4.info      start: 0:02:44
+  9.0.1 1000000         4.no_val      start: 0:02:19
+
+# ssd (not enough disk space for 1M with 2 vcup).
+ 8.0.39 1000000        4.default      start: 0:02:46
+ 8.0.39 1000000           4.info      start: 0:02:46
+ 8.0.39 1000000         4.no_val      start: 0:02:22
+  9.0.1 1000000        4.default      start: 0:02:47
+  9.0.1 1000000           4.info      start: 0:02:48
+  9.0.1 1000000         4.no_val      start: 0:02:25
+```
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.8.0.39.1000000.m6i_gp3_3kiops_125mbps.2.default
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.8.0.39.1000000.m6i_gp3_3kiops_125mbps.2.info
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.8.0.39.1000000.m6i_gp3_3kiops_125mbps.2.no_val
+
+...
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.8.0.39.1000000.m6i_gp3_3kiops_125mbps.4.default
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.8.0.39.1000000.m6i_gp3_3kiops_125mbps.4.info
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.8.0.39.1000000.m6i_gp3_3kiops_125mbps.4.no_val
 
 ...
 
@@ -186,7 +279,6 @@ Moved to `~/Documents/tech/mysql/2024-08_ram_consumption_and_many_tables/notes.t
 
 ```
 fs="$(echo storage/innobase/{fil/fil0fil.cc,handler/ha_innodb.cc,include/srv0srv.h,srv/srv0srv.cc})"
-
 ```
 
 ...
