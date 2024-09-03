@@ -400,6 +400,12 @@ extern bool srv_numa_interleave;
 deliminated by ';', i.e the FIL_PATH_SEPARATOR. */
 extern char *srv_innodb_directories;
 
+/* TODO: remove once testing done. */
+/* Documented in storage/innobase/handler/ha_innodb.cc. */
+/* It looks pointless to duplicate comments, if needed, feel free to do it when merging. */
+extern bool srv_tablespace_startup_testing_fadvise;
+extern bool srv_tablespace_startup_testing_light;
+
 /** Server undo tablespaces directory, can be absolute path. */
 extern char *srv_undo_dir;
 

@@ -1619,12 +1619,19 @@ class Fil_system {
   mapping table. */
   dberr_t scan() { return m_dirs.scan(); }
 
-  /** Get the tablespace ID from an .ibd and/or an undo tablespace. If the ID is
-  0 on the first page then try finding the ID with Datafile::find_space_id().
+  /* Below, I removed part of the comment which was an implementation detail and IMHO added no value here.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  /** Get the tablespace ID from an .ibd and/or an undo tablespace.
   @param[in]    filename        File name to check
   @return s_invalid_space_id if not found, otherwise the space ID */
   [[nodiscard]] static space_id_t get_tablespace_id(
       const std::string &filename);
+
+  /* Three functions below called by above. */
+  [[nodiscard]] static space_id_t get_tablespace_id(FILE *fp);
+  [[nodiscard]] static space_id_t get_tablespace_id_light(FILE *fp);
+  [[nodiscard]] static space_id_t get_tablespace_id_heavy_duty(
+    const std::string &filename);
 
   /** Fil_shard by space ID.
   @param[in]    space_id        Tablespace ID
@@ -10897,8 +10904,9 @@ static bool fil_op_replay_rename(const page_id_t &page_id,
   return true;
 }
 
-/** Get the tablespace ID from an .ibd and/or an undo tablespace. If the ID is 0
-on the first page then try finding the ID with Datafile::find_space_id().
+/* Below, I removed part of the comment which was an implementation detail and IMHO added no value here.
+ * I left this comment for clarity of the patch, it can be removed when merging. */
+/** Get the tablespace ID from an .ibd and/or an undo tablespace.
 @param[in]      filename        File name to check
 @return s_invalid_space_id if not found, otherwise the space ID */
 space_id_t Fil_system::get_tablespace_id(const std::string &filename) {
@@ -10909,37 +10917,151 @@ space_id_t Fil_system::get_tablespace_id(const std::string &filename) {
     return dict_sys_t::s_invalid_space_id;
   }
 
-  std::vector<space_id_t> space_ids;
-  auto page_size = srv_page_size;
+  space_id_t space_id;
 
-  space_ids.reserve(MAX_PAGES_TO_READ);
+  /* Try the lighter methods first.
+   * Even if / when we remove srv_tablespace_startup_testing_light, we still
+   *   need the non-light implementation in case MAX_PAGES_TO_READ is
+   *   changed to something greater than 1. */
+  if (MAX_PAGES_TO_READ == 1 && srv_tablespace_startup_testing_light) {
+    space_id = Fil_system::get_tablespace_id_light(fp);
+  } else {
+    space_id = Fil_system::get_tablespace_id(fp);
+  }
+
+  fclose(fp);
+
+  /* Try the more heavy duty method, as a last resort. */
+  if (space_id == UINT32_UNDEFINED) {
+    /* If the first page cannot be read properly, then for compressed
+    tablespaces we don't know where the page boundary starts because
+    we don't know the page size. */
+    space_id = Fil_system::get_tablespace_id_heavy_duty(filename);
+  }
+
+  return space_id;
+}
+
+space_id_t Fil_system::get_tablespace_id_light(FILE *fp) {
+  ut_a(MAX_PAGES_TO_READ == 1);
+
+#ifdef POSIX_FADV_RANDOM
+  /* Tell the kernel to not prefetch.
+   * If we do not do this, it might decide to read more
+   *   and we definitely do not need more nor do we want to waste io resources
+   *   because this function is called for each table on startup which can be a lot.
+   * Without this, my / JFG tests showed that reading 4 bytes below still fetches
+   *   16 kb from disk instead of 4k, which is the xfs block size. */
+  posix_fadvise(fileno(fp), 0, srv_page_size, POSIX_FADV_RANDOM);
+#endif /* POSIX_FADV_RANDOM */
+
+#ifdef _IONBF
+  /* Without this, we will probably have BUFSIZ = 8192.
+   * Without this, my / JFG tests showed that we read a more than 4 kb. */
+  setvbuf(fp, nullptr, _IONBF, 0);
+#endif /* _IONBF */
+
+  /* For MAX_PAGES_TO_READ == 1, the "not-light" function reads srv_page_size.
+   * This "light" implementation reads less, but would not validate that
+   *   the file size is at least one page.
+   * To keep the same behavior, we do below.
+   * There probably is a better way to get the size of a file than the
+   *   hack below, but below allows doing it "just" with a FILE*,
+   *   which is what we have at our disposal, so acceptable / good enough. */
+  auto err1 = fseek(fp, 0, SEEK_END);
+  long file_size = ftell(fp);
+  if (err1 || file_size < (long)srv_page_size) {
+    return UINT32_UNDEFINED;
+  }
+
+  byte buf[4];
+  auto err2 = fseek(fp, FIL_PAGE_SPACE_ID, SEEK_SET);
+  auto nb_bytes = fread(buf, 1, 4, fp);
+  if (err2 || nb_bytes != 4) {
+    return UINT32_UNDEFINED;
+  }
+
+#ifdef POSIX_FADV_DONTNEED
+  posix_fadvise(fileno(fp), 0, srv_page_size, POSIX_FADV_DONTNEED);
+#endif /* POSIX_FADV_DONTNEED */
+
+  DBUG_EXECUTE_IF("invalid_header", return UINT32_UNDEFINED;);
+
+  space_id_t space_id = mach_read_from_4(buf);
+
+  return space_id == 0 ? UINT32_UNDEFINED : space_id;
+}
+
+space_id_t Fil_system::get_tablespace_id(FILE *fp) {
+  auto page_size = srv_page_size;
 
   const auto n_bytes = page_size * MAX_PAGES_TO_READ;
 
+  /* TODO...
+   * This buffer is allocated for each call of this function,
+   *   which can be a lot as it is called for each table on startup.
+   * I / JFG tested allocating this buffer only once per thread doing duplicate scan,
+   *   and I did not see a significant reduction in startup time,
+   *   but I guess there might be some reduction in CPU usage.
+   * Leaving this to someone else to optimize as I think the light version
+   *   of this function is good enough for now. */
   std::unique_ptr<byte[]> buf(new byte[n_bytes]);
 
   if (!buf) {
     return dict_sys_t::s_invalid_space_id;
   }
 
-  auto pages_read = fread(buf.get(), page_size, MAX_PAGES_TO_READ, fp);
+  /* Let's avoid many calls to buf.get().
+   * The compiler probably cannot do this,
+   *   as it cannot know the result is the same for all calls.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  byte *pbuf = buf.get();
+
+#ifdef POSIX_FADV_RANDOM
+  if (srv_tablespace_startup_testing_fadvise) {
+    /* Tell the kernel to not prefetch.
+     * If we do not do this, it might decide to read more
+     *   and we definitely do not need more nor do we want to waste io resources
+     *   because this function is called for each table on startup which can be a lot. */
+    posix_fadvise(fileno(fp), 0, page_size * MAX_PAGES_TO_READ, POSIX_FADV_RANDOM);
+  }
+#endif /* POSIX_FADV_RANDOM */
+
+  auto pages_read = fread(pbuf, page_size, MAX_PAGES_TO_READ, fp);
 
   DBUG_EXECUTE_IF("invalid_header", pages_read = 0;);
 
   /* Find the space id from the pages read if enough pages could be read.
   Fall back to the more heavier method of finding the space id from
   Datafile::find_space_id() if pages cannot be read properly. */
-  if (pages_read >= MAX_PAGES_TO_READ) {
+  /* I / JFG had a visceral reaction to this large block and was compelled to improve things.
+   * Link to previous code: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L10932
+   * It might have made sense to not early return for closing the FILE*,
+   *   but with the close now being done in the caller and IMHO,
+   *   a quick return makes the code easier to read and understand.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  if (pages_read < MAX_PAGES_TO_READ) {
+    return UINT32_UNDEFINED;
+  }
+
+  /* Some of below are poorly indented to make the diff easier to understand.
+   * It can be reformatted when merging, maybe in a different merge commit.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+
     auto bytes_read = pages_read * page_size;
 
 #ifdef POSIX_FADV_DONTNEED
     posix_fadvise(fileno(fp), 0, bytes_read, POSIX_FADV_DONTNEED);
 #endif /* POSIX_FADV_DONTNEED */
 
-    for (page_no_t i = 0; i < MAX_PAGES_TO_READ; ++i) {
-      const auto off = i * page_size + FIL_PAGE_SPACE_ID;
+  /* I / JFG had a visceral reaction to the "if" executed only in 1st iteration
+   *   of the loop and was compelled to improve things.
+   * Link to previous code: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L10942
+   * By doing this before the loop, the loop body is much smaller, so IMHO easier to understand.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+      {
+        /* This is in a block to limit the scope of variables not needed later.  */
 
-      if (off == FIL_PAGE_SPACE_ID) {
         /* Find out the page size of the tablespace from the first page.
         In case of compressed pages, the subsequent pages can be of different
         sizes. If MAX_PAGES_TO_READ is changed to a different value, then the
@@ -10950,44 +11072,55 @@ space_id_t Fil_system::get_tablespace_id(const std::string &filename) {
 
         ut_a(space_flags_offset + 4 < n_bytes);
 
-        const auto flags = mach_read_from_4(buf.get() + space_flags_offset);
+        const auto flags = mach_read_from_4(pbuf + space_flags_offset);
 
         page_size_t space_page_size(flags);
 
         page_size = space_page_size.physical();
       }
 
-      space_ids.push_back(mach_read_from_4(buf.get() + off));
+  /* I / JFG had a visceral reaction to the 2nd loop and was compelled to improve things.
+   * Link to previous code: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L10975
+   * In addition to saving a loop, this allows removing space_ids (std::vector<space_id_t>),
+   *   saving the corresponding memory allocation.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  ut_a(FIL_PAGE_SPACE_ID + 4 < n_bytes);
 
-      if ((i + 1) * page_size >= bytes_read) {
-        break;
-      }
+  space_id_t space_id = mach_read_from_4(pbuf + FIL_PAGE_SPACE_ID);
+  if (space_id == 0) {
+    return UINT32_UNDEFINED;
+  }
+
+  /* I / JFG had a visceral reaction to if/break in the loop and was compelled to improve things.
+   * Link to previous code: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L10962
+   * By putting it in the loop condition, the loop body is much smaller, so IMHO easier to understand.
+   * Also, the refactoring / unrolling of the 1st iteration of the loop in above needs this.
+   * If for troubleshooting / debugging with gdb, it is suitable to have this in the loop, feel free to put back,
+   *   but at the beginning of the loop, not at the end, and with (i) instead of (i+1) because of unrolling.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  for (page_no_t i = 1; i < MAX_PAGES_TO_READ && i * page_size < bytes_read; ++i) {
+    const auto off = i * page_size + FIL_PAGE_SPACE_ID;
+
+    /* This assertion was missing (in reference to the other about space_flags_offset).
+     * I left this comment for clarity of the patch, it can be removed when merging. */
+    ut_a(off + 4 < n_bytes);
+
+    space_id_t current_space_id = mach_read_from_4(pbuf + off);
+
+    if (current_space_id != space_id) {
+      return UINT32_UNDEFINED;
     }
   }
 
-  fclose(fp);
+  return space_id;
+}
 
-  space_id_t space_id;
+space_id_t Fil_system::get_tablespace_id_heavy_duty(const std::string &filename) {
+  space_id_t space_id = UINT32_UNDEFINED;
 
-  if (!space_ids.empty()) {
-    space_id = space_ids.front();
-
-    for (auto id : space_ids) {
-      if (id == 0 || space_id != id) {
-        space_id = UINT32_UNDEFINED;
-
-        break;
-      }
-    }
-  } else {
-    space_id = UINT32_UNDEFINED;
-  }
-
-  /* Try the more heavy duty method, as a last resort. */
-  if (space_id == UINT32_UNDEFINED) {
-    /* If the first page cannot be read properly, then for compressed
-    tablespaces we don't know where the page boundary starts because
-    we don't know the page size. */
+  /* Below is poorly indented to make the diff easier to understand.
+   * It can be reformatted when merging, maybe in a different merge commit,
+   *   and this comment should then be removed. */
 
     Datafile file;
 
@@ -11007,7 +11140,6 @@ space_id_t Fil_system::get_tablespace_id(const std::string &filename) {
     }
 
     file.close();
-  }
 
   return space_id;
 }
