@@ -146,6 +146,12 @@ char *srv_doublewrite_dir = nullptr;
 deliminated by ';', i.e the FIL_PATH_SEPARATOR. */
 char *srv_innodb_directories = nullptr;
 
+/* TODO: remove once testing done. */
+/* Documented in storage/innobase/handler/ha_innodb.cc. */
+/* It looks pointless to duplicate comments, if needed, feel free to fo it when merging. */
+bool srv_tablespace_startup_testing_fadvise;
+bool srv_tablespace_startup_testing_light;
+
 /** Number of threads spawned for initializing rollback segments
 in parallel */
 uint32_t srv_rseg_init_threads = 1;

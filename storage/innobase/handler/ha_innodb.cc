@@ -23367,6 +23367,24 @@ static MYSQL_SYSVAR_STR(directories, srv_innodb_directories,
                         "'innodb-data-home-dir;innodb-undo-directory;datadir'",
                         nullptr, nullptr, nullptr);
 
+/* TODO: remove once testing done. */
+static MYSQL_SYSVAR_BOOL(
+    tablespace_startup_testing_fadvise, srv_tablespace_startup_testing_fadvise,
+    PLUGIN_VAR_OPCMDARG | PLUGIN_VAR_READONLY | PLUGIN_VAR_NOPERSIST,
+    "For startup fadvise tests, will be removed eventually",
+    nullptr, /* check */
+    nullptr, /* update */
+    false /* def */);
+
+/* TODO: remove once testing done. */
+static MYSQL_SYSVAR_BOOL(
+    tablespace_startup_testing_light, srv_tablespace_startup_testing_light,
+    PLUGIN_VAR_OPCMDARG | PLUGIN_VAR_READONLY | PLUGIN_VAR_NOPERSIST,
+    "For startup light tests, will be removed eventually",
+    nullptr, /* check */
+    nullptr, /* update */
+    false /* def */);
+
 #ifdef UNIV_DEBUG
 /** Use this variable innodb_interpreter to execute debug code within InnoDB.
 The output is stored in the innodb_interpreter_output variable. */
@@ -23525,6 +23543,8 @@ static SYS_VAR *innobase_system_variables[] = {
     MYSQL_SYSVAR(sort_buffer_size),
     MYSQL_SYSVAR(online_alter_log_max_size),
     MYSQL_SYSVAR(directories),
+    MYSQL_SYSVAR(tablespace_startup_testing_fadvise),
+    MYSQL_SYSVAR(tablespace_startup_testing_light),
     MYSQL_SYSVAR(sync_spin_loops),
     MYSQL_SYSVAR(spin_wait_delay),
     MYSQL_SYSVAR(spin_wait_pause_multiplier),
