@@ -1,0 +1,102 @@
+2024-09-06T15:11:29.288099Z mysqld_safe Logging to '/home/jgagne/sandboxes/msb_mysql_9_0_1/data/msandbox.err'.
+2024-09-06T15:11:29.331677Z mysqld_safe Starting mysqld daemon with databases from /home/jgagne/sandboxes/msb_mysql_9_0_1/data
+2024-09-06T15:11:34.058059Z 0 [System] [MY-015015] [Server] MySQL Server - start.
+2024-09-06T15:11:34.486032Z 0 [Note] [MY-010098] [Server] --secure-file-priv is set to NULL. Operations related to importing and exporting data are disabled
+2024-09-06T15:11:34.486082Z 0 [Note] [MY-013932] [Server] BuildID[sha1]=6866cd37e7e070c76d60384dfb49c5bce2767dc6
+2024-09-06T15:11:34.486089Z 0 [Note] [MY-010949] [Server] Basedir set to /mnt/jgagne_bin/opt/mysql/mysql_9.0.1/.
+2024-09-06T15:11:34.486097Z 0 [System] [MY-010116] [Server] /home/jgagne/opt/mysql/mysql_9.0.1/bin/mysqld (mysqld 9.0.1) starting as process 4655
+2024-09-06T15:11:35.082258Z 0 [Note] [MY-015140] [InnoDB] Using innodb_flush_method=O_DIRECT
+2024-09-06T15:11:35.087018Z 0 [Note] [MY-010747] [Server] Plugin 'FEDERATED' is disabled.
+2024-09-06T15:11:35.087073Z 0 [Note] [MY-010747] [Server] Plugin 'ndbcluster' is disabled.
+2024-09-06T15:11:35.087084Z 0 [Note] [MY-010747] [Server] Plugin 'ndbinfo' is disabled.
+2024-09-06T15:11:35.087088Z 0 [Note] [MY-010747] [Server] Plugin 'ndb_transid_mysql_connection_map' is disabled.
+2024-09-06T15:11:35.287575Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2024-09-06T15:11:35.293409Z 1 [Note] [MY-013546] [InnoDB] Atomic write enabled
+2024-09-06T15:11:35.298006Z 1 [Note] [MY-012932] [InnoDB] PUNCH HOLE support available
+2024-09-06T15:11:35.298020Z 1 [Note] [MY-012944] [InnoDB] Uses event mutexes
+2024-09-06T15:11:35.298025Z 1 [Note] [MY-012945] [InnoDB] GCC builtin __atomic_thread_fence() is used for memory barrier
+2024-09-06T15:11:35.298033Z 1 [Note] [MY-012948] [InnoDB] Compressed tables use zlib 1.2.13
+2024-09-06T15:11:35.316724Z 1 [Note] [MY-012951] [InnoDB] Using hardware accelerated crc32 and polynomial multiplication.
+2024-09-06T15:11:35.317580Z 1 [Note] [MY-012203] [InnoDB] Directories to scan './'
+2024-09-06T15:11:35.318065Z 1 [Note] [MY-012204] [InnoDB] Scanning './'
+2024-09-06T15:11:45.318154Z 1 [Note] [MY-012205] [InnoDB] Files found so far: 909747 data files and 2 undo files
+2024-09-06T15:11:45.999238Z 1 [Note] [MY-012206] [InnoDB] Found 1000002 '.ibd' and 2 undo files
+2024-09-06T15:11:45.999286Z 1 [Note] [MY-012207] [InnoDB] Using 9 threads to scan 1000002 tablespace files
+2024-09-06T15:11:55.999403Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 93453/125000 files
+2024-09-06T15:11:55.999507Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 94349/125000 files
+2024-09-06T15:11:55.999532Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 93568/125000 files
+2024-09-06T15:11:55.999949Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 93963/125000 files
+2024-09-06T15:11:56.000051Z 0 [Note] [MY-012200] [InnoDB] Thread# 4 - Checked 93067/125000 files
+2024-09-06T15:11:56.000433Z 0 [Note] [MY-012200] [InnoDB] Thread# 5 - Checked 92758/125000 files
+2024-09-06T15:11:56.003621Z 0 [Note] [MY-012200] [InnoDB] Thread# 6 - Checked 93011/125000 files
+2024-09-06T15:11:56.003632Z 0 [Note] [MY-012200] [InnoDB] Thread# 7 - Checked 93314/125000 files
+2024-09-06T15:11:59.651198Z 0 [Note] [MY-012201] [InnoDB] Checked 125000 files
+2024-09-06T15:11:59.682436Z 0 [Note] [MY-012201] [InnoDB] Checked 125000 files
+2024-09-06T15:11:59.708048Z 0 [Note] [MY-012201] [InnoDB] Checked 125000 files
+2024-09-06T15:11:59.755523Z 0 [Note] [MY-012201] [InnoDB] Checked 125000 files
+2024-09-06T15:11:59.755732Z 0 [Note] [MY-012201] [InnoDB] Checked 125000 files
+2024-09-06T15:11:59.766890Z 0 [Note] [MY-012201] [InnoDB] Checked 125000 files
+2024-09-06T15:11:59.787208Z 0 [Note] [MY-012201] [InnoDB] Checked 125000 files
+2024-09-06T15:11:59.826477Z 0 [Note] [MY-012201] [InnoDB] Checked 125000 files
+2024-09-06T15:11:59.826734Z 1 [Note] [MY-012208] [InnoDB] Completed space ID check of 1000004 files.
+2024-09-06T15:11:59.899347Z 1 [Note] [MY-012955] [InnoDB] Initializing buffer pool, total size = 128.000000M, instances = 1, chunk size =128.000000M 
+2024-09-06T15:11:59.933969Z 1 [Note] [MY-012957] [InnoDB] Completed initialization of buffer pool
+2024-09-06T15:11:59.947934Z 0 [Note] [MY-011952] [InnoDB] If the mysqld execution user is authorized, page cleaner thread priority can be changed. See the man page of setpriority().
+2024-09-06T15:11:59.964072Z 1 [Note] [MY-013532] [InnoDB] Using './#ib_16384_0.dblwr' for doublewrite
+2024-09-06T15:11:59.971777Z 1 [Note] [MY-013532] [InnoDB] Using './#ib_16384_1.dblwr' for doublewrite
+2024-09-06T15:11:59.989579Z 1 [Note] [MY-013566] [InnoDB] Double write buffer files: 2
+2024-09-06T15:11:59.990717Z 1 [Note] [MY-013565] [InnoDB] Double write buffer pages per instance: 128
+2024-09-06T15:11:59.990734Z 1 [Note] [MY-013532] [InnoDB] Using './#ib_16384_0.dblwr' for doublewrite
+2024-09-06T15:11:59.990747Z 1 [Note] [MY-013532] [InnoDB] Using './#ib_16384_1.dblwr' for doublewrite
+2024-09-06T15:12:00.115808Z 1 [Note] [MY-013883] [InnoDB] The latest found checkpoint is at lsn = 20360612 in redo log file ./#innodb_redo/#ib_redo6.
+2024-09-06T15:12:00.116148Z 1 [Note] [MY-013086] [InnoDB] Starting to parse redo log at lsn = 20360227, whereas checkpoint_lsn = 20360612 and start_lsn = 20360192
+2024-09-06T15:12:00.119608Z 1 [Note] [MY-013083] [InnoDB] Log background threads are being started...
+2024-09-06T15:12:00.125364Z 1 [Note] [MY-012532] [InnoDB] Applying a batch of 0 redo log records ...
+2024-09-06T15:12:00.125393Z 1 [Note] [MY-012535] [InnoDB] Apply batch completed!
+2024-09-06T15:12:00.125712Z 1 [Note] [MY-013252] [InnoDB] Using undo tablespace './undo_001'.
+2024-09-06T15:12:00.126286Z 1 [Note] [MY-013252] [InnoDB] Using undo tablespace './undo_002'.
+2024-09-06T15:12:00.127068Z 1 [Note] [MY-012910] [InnoDB] Opened 2 existing undo tablespaces.
+2024-09-06T15:12:00.127097Z 1 [Note] [MY-011980] [InnoDB] GTID recovery trx_no: 6001333
+2024-09-06T15:12:00.147347Z 1 [Note] [MY-013776] [InnoDB] Parallel initialization of rseg complete
+2024-09-06T15:12:00.147391Z 1 [Note] [MY-013777] [InnoDB] Time taken to initialize rseg using 4 thread: 20 ms.
+2024-09-06T15:12:00.147440Z 1 [Note] [MY-012923] [InnoDB] Creating shared tablespace for temporary tables
+2024-09-06T15:12:00.147663Z 1 [Note] [MY-012265] [InnoDB] Setting file './ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+2024-09-06T15:12:00.152675Z 1 [Note] [MY-012266] [InnoDB] File './ibtmp1' size is now 12 MB.
+2024-09-06T15:12:00.155230Z 1 [Note] [MY-013627] [InnoDB] Scanning temp tablespace dir:'./#innodb_temp/'
+2024-09-06T15:12:00.162297Z 1 [Note] [MY-013018] [InnoDB] Created 128 and tracked 128 new rollback segment(s) in the temporary tablespace. 128 are now active.
+2024-09-06T15:12:00.162532Z 1 [Note] [MY-012976] [InnoDB] 9.0.1 started; log sequence number 20360622
+2024-09-06T15:12:00.162942Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2024-09-06T15:12:00.484087Z 1 [Note] [MY-011089] [Server] Data dictionary restarting version '90000'.
+2024-09-06T15:12:00.688682Z 1 [Note] [MY-012357] [InnoDB] Reading DD tablespace files
+2024-09-06T15:12:22.488548Z 0 [Note] [MY-012350] [InnoDB] 8threads have validated 631164 out of 1000006 tablespaces so far.
+2024-09-06T15:12:32.488583Z 0 [Note] [MY-012350] [InnoDB] 8threads have validated 975234 out of 1000006 tablespaces so far.
+2024-09-06T15:12:33.367277Z 1 [Note] [MY-012356] [InnoDB] Scanned 1000006 tablespaces. Validated 1000006.
+2024-09-06T15:12:33.387084Z 1 [Note] [MY-010006] [Server] Using data dictionary with version '90000'.
+2024-09-06T15:12:35.160198Z 0 [Note] [MY-011332] [Server] Plugin mysqlx reported: 'IPv6 is available'
+2024-09-06T15:12:35.203933Z 0 [Note] [MY-011323] [Server] Plugin mysqlx reported: 'X Plugin ready for connections. bind-address: '::' port: 19001'
+2024-09-06T15:12:35.258404Z 0 [Note] [MY-011323] [Server] Plugin mysqlx reported: 'X Plugin ready for connections. socket: '/tmp/mysqlx-19001.sock''
+2024-09-06T15:12:35.277433Z 0 [Note] [MY-010902] [Server] Thread priority attribute setting in Resource Group SQL shall be ignored due to unsupported platform or insufficient privilege.
+2024-09-06T15:12:35.280166Z 0 [Note] [MY-010856] [Server] Failed to open the crashed binlog file when source server is recovering it.
+2024-09-06T15:12:35.285107Z 0 [Note] [MY-013911] [Server] Crash recovery finished in binlog engine. No attempts to commit, rollback or prepare any transactions.
+2024-09-06T15:12:35.285126Z 0 [Note] [MY-013911] [Server] Crash recovery finished in InnoDB engine. No attempts to commit, rollback or prepare any transactions.
+2024-09-06T15:12:35.286757Z 0 [Note] [MY-012487] [InnoDB] DDL log recovery : begin
+2024-09-06T15:12:35.287061Z 0 [Note] [MY-012488] [InnoDB] DDL log recovery : end
+2024-09-06T15:12:35.339484Z 0 [Note] [MY-011946] [InnoDB] Loading buffer pool(s) from /mnt/jgagne_sandboxes/msb_mysql_9_0_1/data/ib_buffer_pool
+2024-09-06T15:12:35.346769Z 0 [Note] [MY-012922] [InnoDB] Waiting for purge to start
+2024-09-06T15:12:35.432341Z 0 [Note] [MY-010913] [Server] You have not provided a mandatory server-id. Servers in a replication topology must have unique server-ids. Please refer to the proper server start-up parameters documentation.
+2024-09-06T15:12:35.437312Z 0 [Note] [MY-010182] [Server] Found ca.pem, server-cert.pem and server-key.pem in data directory. Trying to enable SSL support using them.
+2024-09-06T15:12:35.448058Z 0 [Note] [MY-010304] [Server] Skipping generation of SSL certificates as certificate files are present in data directory.
+2024-09-06T15:12:35.466404Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2024-09-06T15:12:35.466425Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2024-09-06T15:12:35.466646Z 0 [Note] [MY-010308] [Server] Skipping generation of RSA key pair through --sha256_password_auto_generate_rsa_keys as key files are present in data directory.
+2024-09-06T15:12:35.466818Z 0 [Note] [MY-010308] [Server] Skipping generation of RSA key pair through --caching_sha2_password_auto_generate_rsa_keys as key files are present in data directory.
+2024-09-06T15:12:35.469036Z 0 [Note] [MY-010252] [Server] Server hostname (bind-address): '127.0.0.1'; port: 9001
+2024-09-06T15:12:35.469048Z 0 [Note] [MY-010264] [Server]   - '127.0.0.1' resolves to '127.0.0.1';
+2024-09-06T15:12:35.469063Z 0 [Note] [MY-010251] [Server] Server socket created on IP: '127.0.0.1'.
+2024-09-06T15:12:35.531000Z 0 [Note] [MY-011025] [Repl] Failed to start replica threads for channel ''.
+2024-09-06T15:12:35.534560Z 5 [Note] [MY-010051] [Server] Event Scheduler: scheduler thread started with id 5
+2024-09-06T15:12:35.534682Z 0 [Note] [MY-011240] [Server] Plugin mysqlx reported: 'Using SSL configuration from MySQL Server'
+2024-09-06T15:12:35.562534Z 0 [Note] [MY-011243] [Server] Plugin mysqlx reported: 'Using OpenSSL for TLS connections'
+2024-09-06T15:12:35.562692Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 19001, socket: /tmp/mysqlx-19001.sock
+2024-09-06T15:12:35.562828Z 0 [System] [MY-010931] [Server] /home/jgagne/opt/mysql/mysql_9.0.1/bin/mysqld: ready for connections. Version: '9.0.1'  socket: '/tmp/mysql_sandbox9001.sock'  port: 9001  Source distribution.
+2024-09-06T15:12:35.658993Z 0 [Note] [MY-011946] [InnoDB] Buffer pool(s) load completed at 240906 15:12:35

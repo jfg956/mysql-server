@@ -266,6 +266,145 @@ Making multi-threading actually working:
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
+### Fadvise and Light Optimizations
+
+...
+
+https://jfg-mysql.blogspot.com/2024/09/blog-post.html
+
+https://bugs.mysql.com/bug.php?id=115988
+
+https://github.com/jfg956/mysql-server/pull/14
+
+...
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+Below is a variation of what is in Bug#115988, idea derived from Dan Reif's comment
+on LinkedIn, analysis below.
+- https://www.linkedin.com/feed/update/urn:li:activity:7237506503144845312?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7237506503144845312%2C7237536077027139586%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287237536077027139586%2Curn%3Ali%3Aactivity%3A7237506503144845312%29
+
+```
+function start() {
+  sudo sync; sudo /usr/bin/bash -c "echo 3 > /proc/sys/vm/drop_caches"
+
+  ( ./start > /dev/null & )
+  while sleep 1; do test -e data/mysql_sandbox*.pid && break; done | pv -t -N "$(status_string start)"
+
+  ./use <<< "FLUSH ERROR LOGS"  # Because we cp logs after this, let's make sure they are flushed.
+  cp data/msandbox.err ../msandbox.err.$mv.$str
+}
+
+function stop() {
+  local pid=$(cat data/mysql_sandbox*.pid)
+  ( ./stop > /dev/null & )
+  while sleep 1; do ps -p $pid | grep -q $pid || break; done
+}
+
+function status_string() {
+  printf "%6s %13s %9s" $mv $str $1
+}
+
+# Below function is to swap between binaries.
+function set_bin() {
+  ( # In a sub-shell to not have to undo cd.
+    cd ~/opt/mysql/mysql_$mv/bin
+    rm -f mysqld
+    ln -s mysqld_$1 mysqld
+  )
+}
+
+function stop_wipe_restore() {
+  stop; rm -rf data
+  set_bin $1; str=$2
+  pv -te ~/sandboxes/mysql_${mv}.data.${n}.tgz -N "$(status_string restore)" | tar -zx
+}
+
+# The actual test: 1M tables with 9.0.1, org and explo.
+n=1000000; mv="9.0.1"; {
+  set_bin org
+  cd; dbdeployer deploy single mysql_$mv -c log_error_verbosity=3 > /dev/null
+  cd ~/sandboxes/msb_mysql_${mv//./_}
+
+  stop_wipe_restore org   default_org;   start
+  stop_wipe_restore explo default_explo; start
+
+  echo "innodb_tablespace_startup_testing_light=ON" >> my.sandbox.cnf
+  stop_wipe_restore explo light; start
+
+  stop; cd; rm -rf ~/sandboxes/msb_mysql_${mv//./_}
+  set_bin org
+}
+
+ 9.0.1   default_org   restore: 0:13:02
+ 9.0.1   default_org     start: 0:02:46
+ 9.0.1 default_explo   restore: 0:13:02
+ 9.0.1 default_explo     start: 0:02:37
+ 9.0.1         light   restore: 0:13:01
+ 9.0.1         light     start: 0:01:08
+```
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.9.0.1.default_explo
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.9.0.1.light
+
+```
+#include <dirent.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/types.h>
+
+int main(int argc, char** argv) {
+  char buf[1024*4];
+  DIR * pdir = opendir(".");
+
+  while (1) {
+    struct dirent *pdirent =  readdir(pdir);
+    if (!pdirent) break;
+    if (pdirent->d_name[0] == '.') continue;
+
+    FILE *pf = fopen(pdirent->d_name, "rb");
+    posix_fadvise(fileno(pf), 0, 1024*4, POSIX_FADV_RANDOM);
+    setvbuf(pf, 0, _IONBF, 0);
+    fread(buf, 1, 1024*4, pf);
+    fclose(pf);
+
+    printf(".");
+  }
+
+  return 0;
+}
+
+# ... stop_wipe_restore explo light_cached.
+ 9.0.1  light_cached   restore: 0:13:02
+
+~/sandboxes/msb_mysql_9_0_1/data/test_jfg$ sudo sync; sudo /usr/bin/bash -c "echo 3 > /proc/sys/vm/drop_caches"
+~/sandboxes/msb_mysql_9_0_1/data/test_jfg$ ~/tmp/a.out | pv -tbea -s 1000000 > /dev/null
+ 976KiB 0:01:30 [10.7KiB/s]
+~/sandboxes/msb_mysql_9_0_1/data/test_jfg$ ~/tmp/a.out | pv -tbea -s 1000000 > /dev/null
+ 976KiB 0:00:02 [ 385KiB/s]
+
+# ... start wo flushing cache.
+ 9.0.1  light_cached     start: 0:00:49
+```
+
+https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/explo_files/msandbox.err.9.0.1.light_cached
+
+<a name="light_info_error_log_analysis"></a>
+
+(Direct link to here: [link](#light_info_error_log_analysis))
+
+In default_explo, Duplicate Check from 14:55:25 to 14:57:07 --> 1:32 of 2:37.
+
+In light, Duplicate Check from 15:11:45 to 15:11:59 --> 0:14 of 1:08.
+
+In light_cached, Duplicate Check from 16:07:45 to 16:07:48 --> 0:03 of 0:49.
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
 ### Other Notes
 
 ...
