@@ -623,11 +623,12 @@ class Tablespace_dirs {
   @param[in]    start           Start of slice
   @param[in]    end             End of slice
   @param[in]    thread_id       Thread ID
+  @param[in]    nb_files        Number of files to check
   @param[in,out]        mutex           Mutex protecting the global state
   @param[in,out]        unique          To check for duplicates
   @param[in,out]        duplicates      Duplicate space IDs found */
   void duplicate_check(const Const_iter &start, const Const_iter &end,
-                       size_t thread_id, std::mutex *mutex,
+                       size_t thread_id, size_t nb_files, std::mutex *mutex,
                        Space_id_set *unique, Space_id_set *duplicates);
 
  private:
@@ -11134,11 +11135,10 @@ void Fil_system::rename_partition_files(bool revert) {
 }
 
 void Tablespace_dirs::duplicate_check(const Const_iter &start,
-                                      const Const_iter &end, size_t thread_id,
+                                      const Const_iter &end, size_t thread_id, size_t nb_files,
                                       std::mutex *mutex, Space_id_set *unique,
                                       Space_id_set *duplicates) {
   size_t count = 0;
-  bool printed_msg = false;
   auto start_time = std::chrono::steady_clock::now();
 
   for (auto it = start; it != end; ++it, ++m_checked) {
@@ -11176,17 +11176,34 @@ void Tablespace_dirs::duplicate_check(const Const_iter &start,
 
     ++count;
 
-    if (std::chrono::steady_clock::now() - start_time >= PRINT_INTERVAL) {
-      ib::info(ER_IB_MSG_375) << "Thread# " << thread_id << " - Checked "
-                              << count << "/" << (end - start) << " files";
-
-      start_time = std::chrono::steady_clock::now();
-
-      printed_msg = true;
+    /* TODO: in updated below, if we are very unlucky, thread_id 0 could finish early,
+     *   which would break logging.  A way to fix this is in Validate_files::check in storage/innobase/handler/ha_innodb.cc. */
+    /* "Thread#" removed from below,
+     *   because thread id is debug logging, not useful to to an operator.
+     * Also, removed duplicate call to std::chrono::steady_clock::now(),
+     *   because I can, it is nicer, and I was here anyway.
+     * Also, improved logging with nb_files and percent,
+     *   because it is better for the operator to have progress information.
+     * I left this comment for clarity of the patch, it can be removed when merging. */
+    auto now = start_time;  /* We do not really need start_time in now, this is a trick for using auto. */
+    if (thread_id == 0 && (now = std::chrono::steady_clock::now()) - start_time >= PRINT_INTERVAL) {
+      start_time = now;
+      size_t checked = m_checked.load();
+      unsigned long percentx100 = (checked * 100 * 100) / nb_files;
+      unsigned long percentx100mod100 = percentx100 % 100;
+      ib::info(ER_IB_MSG_375)
+        << "Checked " << checked << "/" << nb_files
+        << " (" << percentx100/100 << "."
+        << ( (percentx100mod100 > 9) ? "" : "0" )
+        << percentx100mod100 << "%) files";
     }
   }
 
-  if (printed_msg) {
+  /* Removing this,
+   *   because this is debug logging, not useful to an operator.
+   * This block should be removed when merging.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  if (false) {
     ib::info(ER_IB_MSG_376) << "Checked " << count << " files";
   }
 }
@@ -11372,7 +11389,6 @@ dberr_t Tablespace_dirs::scan() {
   Scanned_files ibd_files;
   Scanned_files undo_files;
   uint16_t count = 0;
-  bool print_msg = false;
   auto start_time = std::chrono::steady_clock::now();
 
   /* Should be trivial to parallelize the scan and ID check. */
@@ -11427,7 +11443,6 @@ dberr_t Tablespace_dirs::scan() {
             << " and " << undo_files.size() << " undo files";
 
         start_time = std::chrono::steady_clock::now();
-        print_msg = true;
       }
     });
 
@@ -11437,7 +11452,10 @@ dberr_t Tablespace_dirs::scan() {
   /* Rename all old partition files. */
   fil_system->rename_partition_files(false);
 
-  if (print_msg) {
+  /* Let's always print this, because always relevant !
+   * This block should be refactored when merging (remove the if, and de-indent).
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  if (true) {
     ib::info(ER_IB_MSG_381) << "Found " << ibd_files.size() << " '.ibd' and "
                             << undo_files.size() << " undo files";
   }
@@ -11445,34 +11463,66 @@ dberr_t Tablespace_dirs::scan() {
   Space_id_set unique;
   Space_id_set duplicates;
 
-  /* Get the number of additional threads needed to scan the files. */
-  size_t n_threads = fil_get_scan_threads(ibd_files.size());
+  size_t n_threads = (srv_tablespace_duplicate_check_threads == -1)
+                        ? fil_get_scan_threads(ibd_files.size())
+                        : srv_tablespace_duplicate_check_threads;
 
-  if (n_threads > 0) {
+  /* Let's always print this,
+   *   because the absence of the log line, which means doing things in the main thread,
+   *   is not such a saving, and clarity is better than avoiding one log line.
+   * This block should be refactored when merging (remove the if, de-indent, and maybe move just above par_for).
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  if (true) {
     ib::info(ER_IB_MSG_382)
-        << "Using " << (n_threads + 1) << " threads to"
-        << " scan " << ibd_files.size() << " tablespace files";
+        << "Using " << n_threads << " thread(s) to scan "
+        << ibd_files.size() << " tablespace files";
   }
 
   std::mutex m;
 
+  /* I needed _7 but instead of adding it below, I changed the way it is used to remove _5 and _6.
+   * To me, this looks better !
+   * If you also like it, I would suggest also removing _1 to _4 when merging.
+   * If you do not like it, adding back _5 to _7 is trivial when merging.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
   using std::placeholders::_1;
   using std::placeholders::_2;
   using std::placeholders::_3;
   using std::placeholders::_4;
-  using std::placeholders::_5;
-  using std::placeholders::_6;
 
-  std::function<void(const Const_iter &, const Const_iter &, size_t,
+  std::function<void(const Const_iter &, const Const_iter &, size_t, size_t,
                      std::mutex *, Space_id_set *, Space_id_set *)>
       check = std::bind(&Tablespace_dirs::duplicate_check, this, _1, _2, _3, _4,
-                        _5, _6);
+                        std::placeholders::_5,
+                        std::placeholders::_6,
+                        std::placeholders::_7);
 
-  par_for(PFS_NOT_INSTRUMENTED, ibd_files, n_threads, check, &m, &unique,
-          &duplicates);
+  /* TODO: if n_threads = 1, consider setting to 0 to avoid sub-thread below. */
 
-  duplicate_check(undo_files.begin(), undo_files.end(), n_threads, &m, &unique,
+  /* TODO: ith n_threads = 0 (and 1), the mutex is not needed ... */
+
+  /* When n_threads = 0, all work is done in the main thread with thread_id = 0,
+   * when n_threads = 1, all work is done in a sub-thread with thread_id = 0,
+   * when n_threads > 1, most work is done in sub-threads and left-over in the main thread,
+   *   with both the main thread and the 1st sub-thread having thread_id = 0.
+   * Yes, this is not simple ! */
+  par_for(PFS_NOT_INSTRUMENTED, ibd_files, n_threads, check, /* up to here, args for par_for. */
+          /* from here, args to check function. */ ibd_files.size(), &m, &unique, &duplicates);
+
+  ib::info(ER_IB_MSG_376) << "Checked " << m_checked << " tablespace files";
+
+  ib::info(ER_IB_MSG_382)
+      << "Using 1 thread to scan " << undo_files.size() << " undo files";
+
+  /* Giving n_threads as thread_id is probably wrong in below,
+   *   but the impact is probably null as it is only used for logging,
+   *   and probably no logging for undo.
+   * Still, changing this to 0.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  duplicate_check(undo_files.begin(), undo_files.end(), 0, undo_files.size(), &m, &unique,
                   &duplicates);
+
+  ib::info(ER_IB_MSG_376) << "Checked " << undo_files.size() << " undo files";
 
   ut_a(m_checked == ibd_files.size() + undo_files.size());
 

@@ -3373,6 +3373,7 @@ class Validate_files {
   from the known directories.
   3. Update the DD if a tablespace has moved.
   4. Update the DD if an undo tablespace was truncated and replaced.
+  TODO: below is not up-to-date and does not take into account the ibuf logic.
   5. If innodb_validate_tablespace_paths is set and this is not called
   while in recovery, only validate undo tablespaces.
   6. Track the number of skipped, moved, missing and deleted tablespaces.
@@ -3435,9 +3436,13 @@ void Validate_files::check(const Const_iter &begin, const Const_iter &end,
   tablespaces. If all the conditions mentioned above are false then
   validate only undo tablespaces */
 
+  /* TODO: this is code duplication with Validate_files::validate, check comment there. */
   const bool ibd_validate =
       srv_validate_tablespace_paths || recv_needed_recovery || !ibuf_is_empty();
 
+  /* TODO: this should be removed, because this is debug logging !
+   * From what I see, this is used as a prefix of some logs, not all.
+   * In info, warn or error logging, we do not care which thread generates a log ! */
   std::string prefix;
   if (m_n_threads > 0) {
     std::ostringstream msg;
@@ -3448,6 +3453,9 @@ void Validate_files::check(const Const_iter &begin, const Const_iter &end,
   for (auto it = begin; it != end; ++it) {
     const auto &dd_tablespace = *it;
 
+    /* TODO: there is a race-condition here !
+     * Two threads could evaluate the condition at the same time and get in the if.
+     * Arguably, the impact of this is low (duplicate logging) but should eventually be fixed. */
     if (std::chrono::steady_clock::now() - m_start_time.load() >=
         PRINT_INTERVAL) {
       m_start_time = std::chrono::steady_clock::now();
@@ -3455,7 +3463,7 @@ void Validate_files::check(const Const_iter &begin, const Const_iter &end,
       std::ostringstream msg;
 
       if (m_n_threads) {
-        msg << m_n_threads << "threads have validated ";
+        msg << m_n_threads << " threads have validated ";
       } else {
         msg << "Validated ";
       }
@@ -3751,6 +3759,11 @@ void Validate_files::check(const Const_iter &begin, const Const_iter &end,
       continue;
     }
 
+    /* TODO: this validate is documented as follow in storage/innobase/include/fil0fil.h:
+     *    whether we should validate the tablespace (read the first page of the file and
+     *       check that the space id in it matches id)
+     * This looks very similar to what is done in Duplicate Check.
+     * Would we be doing this twice in crash-recovery ? */
     /* The IBD filename from the DD has not yet been opened. Try to open it.
     It's safe to pass space_name in tablename charset because filename is
     already in filename charset. */
@@ -3789,6 +3802,10 @@ dberr_t Validate_files::validate(const DD_tablespaces &tablespaces) {
   m_n_threads = fil_get_scan_threads(m_n_to_check);
   m_start_time = std::chrono::steady_clock::now();
 
+  /* TODO: remove code duplication and more !
+   * There is code duplication here and in Validate_files::check.
+   * Remove this duplicate logic
+   *   and maybe do not spawn threads is we only valide undo files. */
   if (!srv_validate_tablespace_paths && !recv_needed_recovery &&
       ibuf_is_empty()) {
     ib::info(ER_IB_TABLESPACE_PATH_VALIDATION_SKIPPED);
@@ -3869,6 +3886,7 @@ dberr_t Validate_files::validate(const DD_tablespaces &tablespaces) {
 
   ib::info(ER_IB_MSG_532) << "Reading DD tablespace files";
 
+  /* TODO: below can take time, add progress logging. */
   if (dc->fetch_global_components(&tablespaces)) {
     /* Failed to fetch the tablespaces from the DD. */
 
@@ -23117,6 +23135,26 @@ static MYSQL_SYSVAR_STR(directories, srv_innodb_directories,
                         "'innodb-data-home-dir;innodb-undo-directory;datadir'",
                         nullptr, nullptr, nullptr);
 
+/* there is no point in changing this during runtime, thus readonly */
+/* above copied from buffer_pool_load_at_startup */
+/* I / JFG thinks above predates SET PERSIST...
+ * it might make sense to change the value for the next startup. */
+/* TODO: explore allowing to change this with SET PERSIST (but not SET GLOBAL). */
+static MYSQL_SYSVAR_INT(
+    tablespace_duplicate_check_threads, srv_tablespace_duplicate_check_threads,
+    PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_READONLY | PLUGIN_VAR_NOPERSIST,
+    "Number of threads for tablespace duplicate check at startup: "
+    "-1 for auto-compute, 0 for scaning in main thread, 1 in one sub-thread, "
+    "n in sub-threads with spilling in main thread",
+    nullptr, /* check */
+    nullptr, /* update */
+    -1, /* def */
+    -1, /* min */
+    128, /* max, there might be edge-cases for more than 128, but enough for now */
+    0 /* blk, unclear what this is, doc (link below) not helpful, copying others */);
+/* doc link for above:
+ * https://dev.mysql.com/doc/extending-mysql/8.0/en/plugin-status-system-variables.html */
+
 #ifdef UNIV_DEBUG
 /** Use this variable innodb_interpreter to execute debug code within InnoDB.
 The output is stored in the innodb_interpreter_output variable. */
@@ -23275,6 +23313,7 @@ static SYS_VAR *innobase_system_variables[] = {
     MYSQL_SYSVAR(sort_buffer_size),
     MYSQL_SYSVAR(online_alter_log_max_size),
     MYSQL_SYSVAR(directories),
+    MYSQL_SYSVAR(tablespace_duplicate_check_threads),
     MYSQL_SYSVAR(sync_spin_loops),
     MYSQL_SYSVAR(spin_wait_delay),
     MYSQL_SYSVAR(spin_wait_pause_multiplier),

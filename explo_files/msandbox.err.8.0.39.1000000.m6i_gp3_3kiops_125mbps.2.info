@@ -1,0 +1,222 @@
+2024-08-26T02:35:59.954165Z mysqld_safe Logging to '/home/jgagne/sandboxes/msb_mysql_8_0_39/data/msandbox.err'.
+2024-08-26T02:36:00.026271Z mysqld_safe Starting mysqld daemon with databases from /home/jgagne/sandboxes/msb_mysql_8_0_39/data
+2024-08-26T02:36:03.408644Z 0 [Note] [MY-010098] [Server] --secure-file-priv is set to NULL. Operations related to importing and exporting data are disabled
+2024-08-26T02:36:03.421549Z 0 [Note] [MY-013932] [Server] BuildID[sha1]=fca49e9dc9269e9757ff439d237d0a86b4258394
+2024-08-26T02:36:03.421557Z 0 [Note] [MY-010949] [Server] Basedir set to /mnt/jgagne_bin/opt/mysql/mysql_8.0.39/.
+2024-08-26T02:36:03.421566Z 0 [System] [MY-010116] [Server] /home/jgagne/opt/mysql/mysql_8.0.39/bin/mysqld (mysqld 8.0.39) starting as process 68009
+2024-08-26T02:36:03.887499Z 0 [Note] [MY-012366] [InnoDB] Using Linux native AIO
+2024-08-26T02:36:03.952418Z 0 [Note] [MY-010747] [Server] Plugin 'FEDERATED' is disabled.
+2024-08-26T02:36:03.952507Z 0 [Note] [MY-010747] [Server] Plugin 'ndbcluster' is disabled.
+2024-08-26T02:36:03.952518Z 0 [Note] [MY-010747] [Server] Plugin 'ndbinfo' is disabled.
+2024-08-26T02:36:03.952522Z 0 [Note] [MY-010747] [Server] Plugin 'ndb_transid_mysql_connection_map' is disabled.
+2024-08-26T02:36:04.166470Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2024-08-26T02:36:04.185634Z 1 [Note] [MY-013546] [InnoDB] Atomic write enabled
+2024-08-26T02:36:04.197261Z 1 [Note] [MY-012932] [InnoDB] PUNCH HOLE support available
+2024-08-26T02:36:04.197279Z 1 [Note] [MY-012944] [InnoDB] Uses event mutexes
+2024-08-26T02:36:04.197284Z 1 [Note] [MY-012945] [InnoDB] GCC builtin __atomic_thread_fence() is used for memory barrier
+2024-08-26T02:36:04.197290Z 1 [Note] [MY-012948] [InnoDB] Compressed tables use zlib 1.2.13
+2024-08-26T02:36:04.292383Z 1 [Note] [MY-012951] [InnoDB] Using hardware accelerated crc32 and polynomial multiplication.
+2024-08-26T02:36:04.292857Z 1 [Note] [MY-012203] [InnoDB] Directories to scan './'
+2024-08-26T02:36:04.306208Z 1 [Note] [MY-012204] [InnoDB] Scanning './'
+2024-08-26T02:36:14.306525Z 1 [Note] [MY-012205] [InnoDB] Files found so far: 418594 data files and 2 undo files
+2024-08-26T02:36:24.306648Z 1 [Note] [MY-012205] [InnoDB] Files found so far: 858081 data files and 2 undo files
+2024-08-26T02:36:27.504504Z 1 [Note] [MY-012206] [InnoDB] Found 1000002 '.ibd' and 2 undo files
+2024-08-26T02:36:27.504569Z 1 [Note] [MY-012207] [InnoDB] Using 5 threads to scan 1000002 tablespace files
+2024-08-26T02:36:37.505041Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 8279/250000 files
+2024-08-26T02:36:37.505351Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 8274/250000 files
+2024-08-26T02:36:37.505812Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 8273/250000 files
+2024-08-26T02:36:37.506261Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 8280/250000 files
+2024-08-26T02:36:47.505979Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 15657/250000 files
+2024-08-26T02:36:47.506173Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 15654/250000 files
+2024-08-26T02:36:47.506511Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 15651/250000 files
+2024-08-26T02:36:47.506848Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 15657/250000 files
+2024-08-26T02:36:57.506088Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 23147/250000 files
+2024-08-26T02:36:57.506398Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 23144/250000 files
+2024-08-26T02:36:57.506817Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 23144/250000 files
+2024-08-26T02:36:57.507083Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 23149/250000 files
+2024-08-26T02:37:07.506573Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 30643/250000 files
+2024-08-26T02:37:07.506908Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 30647/250000 files
+2024-08-26T02:37:07.507295Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 30649/250000 files
+2024-08-26T02:37:07.507555Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 30646/250000 files
+2024-08-26T02:37:17.507497Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 37849/250000 files
+2024-08-26T02:37:17.507788Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 37838/250000 files
+2024-08-26T02:37:17.508294Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 37847/250000 files
+2024-08-26T02:37:17.508406Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 37841/250000 files
+2024-08-26T02:37:27.508167Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 45349/250000 files
+2024-08-26T02:37:27.508607Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 45345/250000 files
+2024-08-26T02:37:27.509224Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 45338/250000 files
+2024-08-26T02:37:27.509582Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 45345/250000 files
+2024-08-26T02:37:37.508839Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 52840/250000 files
+2024-08-26T02:37:37.509175Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 52833/250000 files
+2024-08-26T02:37:37.509454Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 52832/250000 files
+2024-08-26T02:37:37.509845Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 52834/250000 files
+2024-08-26T02:37:47.509357Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 60038/250000 files
+2024-08-26T02:37:47.510012Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 60039/250000 files
+2024-08-26T02:37:47.510319Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 60023/250000 files
+2024-08-26T02:37:47.510966Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 60043/250000 files
+2024-08-26T02:37:57.510495Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 67542/250000 files
+2024-08-26T02:37:57.511143Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 67538/250000 files
+2024-08-26T02:37:57.511456Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 67527/250000 files
+2024-08-26T02:37:57.513025Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 67538/250000 files
+2024-08-26T02:38:07.511008Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 75041/250000 files
+2024-08-26T02:38:07.511623Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 75021/250000 files
+2024-08-26T02:38:07.512033Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 75031/250000 files
+2024-08-26T02:38:07.514004Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 75022/250000 files
+2024-08-26T02:38:17.511994Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 82206/250000 files
+2024-08-26T02:38:17.512178Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 82238/250000 files
+2024-08-26T02:38:17.512835Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 82217/250000 files
+2024-08-26T02:38:17.515183Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 82210/250000 files
+2024-08-26T02:38:27.512356Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 89715/250000 files
+2024-08-26T02:38:27.513119Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 89716/250000 files
+2024-08-26T02:38:27.513999Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 89725/250000 files
+2024-08-26T02:38:27.515987Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 89717/250000 files
+2024-08-26T02:38:37.513554Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 97209/250000 files
+2024-08-26T02:38:37.514200Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 97210/250000 files
+2024-08-26T02:38:37.514562Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 97208/250000 files
+2024-08-26T02:38:37.516633Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 97207/250000 files
+2024-08-26T02:38:47.520140Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 104572/250000 files
+2024-08-26T02:38:47.520443Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 104568/250000 files
+2024-08-26T02:38:47.520892Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 104577/250000 files
+2024-08-26T02:38:47.521088Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 104571/250000 files
+2024-08-26T02:38:57.520575Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 111862/250000 files
+2024-08-26T02:38:57.521358Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 111880/250000 files
+2024-08-26T02:38:57.521872Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 111892/250000 files
+2024-08-26T02:38:57.522241Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 111923/250000 files
+2024-08-26T02:39:07.520694Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 119307/250000 files
+2024-08-26T02:39:07.522068Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 119327/250000 files
+2024-08-26T02:39:07.522465Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 119339/250000 files
+2024-08-26T02:39:07.522844Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 119373/250000 files
+2024-08-26T02:39:17.522281Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 126551/250000 files
+2024-08-26T02:39:17.522916Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 126580/250000 files
+2024-08-26T02:39:17.523285Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 126592/250000 files
+2024-08-26T02:39:17.524127Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 126630/250000 files
+2024-08-26T02:39:27.523195Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 134005/250000 files
+2024-08-26T02:39:27.523523Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 134037/250000 files
+2024-08-26T02:39:27.523771Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 134022/250000 files
+2024-08-26T02:39:27.525419Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 134074/250000 files
+2024-08-26T02:39:37.524061Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 141497/250000 files
+2024-08-26T02:39:37.524295Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 141533/250000 files
+2024-08-26T02:39:37.524986Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 141512/250000 files
+2024-08-26T02:39:37.525944Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 141565/250000 files
+2024-08-26T02:39:47.524507Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 148777/250000 files
+2024-08-26T02:39:47.524892Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 148812/250000 files
+2024-08-26T02:39:47.525149Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 148793/250000 files
+2024-08-26T02:39:47.526882Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 148846/250000 files
+2024-08-26T02:39:57.524664Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 156199/250000 files
+2024-08-26T02:39:57.525379Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 156204/250000 files
+2024-08-26T02:39:57.525720Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 156217/250000 files
+2024-08-26T02:39:57.527699Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 156269/250000 files
+2024-08-26T02:40:07.525484Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 163700/250000 files
+2024-08-26T02:40:07.525847Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 163691/250000 files
+2024-08-26T02:40:07.526698Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 163699/250000 files
+2024-08-26T02:40:07.528870Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 163763/250000 files
+2024-08-26T02:40:17.526065Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 170949/250000 files
+2024-08-26T02:40:17.526572Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 170960/250000 files
+2024-08-26T02:40:17.527186Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 170955/250000 files
+2024-08-26T02:40:17.529519Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 171021/250000 files
+2024-08-26T02:40:27.526945Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 178382/250000 files
+2024-08-26T02:40:27.527218Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 178387/250000 files
+2024-08-26T02:40:27.527664Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 178390/250000 files
+2024-08-26T02:40:27.530599Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 178457/250000 files
+2024-08-26T02:40:37.527813Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 185872/250000 files
+2024-08-26T02:40:37.528123Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 185879/250000 files
+2024-08-26T02:40:37.528710Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 185884/250000 files
+2024-08-26T02:40:37.530812Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 185946/250000 files
+2024-08-26T02:40:47.528927Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 193129/250000 files
+2024-08-26T02:40:47.529800Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 193154/250000 files
+2024-08-26T02:40:47.529979Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 193172/250000 files
+2024-08-26T02:40:47.531956Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 193218/250000 files
+2024-08-26T02:40:57.529106Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 200564/250000 files
+2024-08-26T02:40:57.530186Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 200593/250000 files
+2024-08-26T02:40:57.530797Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 200609/250000 files
+2024-08-26T02:40:57.532430Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 200616/250000 files
+2024-08-26T02:41:07.529333Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 208055/250000 files
+2024-08-26T02:41:07.530315Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 208077/250000 files
+2024-08-26T02:41:07.531268Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 208105/250000 files
+2024-08-26T02:41:07.532821Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 208105/250000 files
+2024-08-26T02:41:17.530478Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 215314/250000 files
+2024-08-26T02:41:17.530880Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 215332/250000 files
+2024-08-26T02:41:17.531484Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 215363/250000 files
+2024-08-26T02:41:17.533517Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 215362/250000 files
+2024-08-26T02:41:27.531700Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 222807/250000 files
+2024-08-26T02:41:27.532025Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 222763/250000 files
+2024-08-26T02:41:27.532712Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 222783/250000 files
+2024-08-26T02:41:27.533657Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 222810/250000 files
+2024-08-26T02:41:37.531892Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 230282/250000 files
+2024-08-26T02:41:37.532924Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 230157/250000 files
+2024-08-26T02:41:37.533842Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 230263/250000 files
+2024-08-26T02:41:37.534958Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 230283/250000 files
+2024-08-26T02:41:47.532335Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 237528/250000 files
+2024-08-26T02:41:47.534045Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 237180/250000 files
+2024-08-26T02:41:47.534356Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 237498/250000 files
+2024-08-26T02:41:47.536157Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 237522/250000 files
+2024-08-26T02:41:57.533238Z 0 [Note] [MY-012200] [InnoDB] Thread# 3 - Checked 244891/250000 files
+2024-08-26T02:41:57.535028Z 0 [Note] [MY-012200] [InnoDB] Thread# 2 - Checked 244920/250000 files
+2024-08-26T02:41:57.535199Z 0 [Note] [MY-012200] [InnoDB] Thread# 0 - Checked 244376/250000 files
+2024-08-26T02:41:57.536858Z 0 [Note] [MY-012200] [InnoDB] Thread# 1 - Checked 244948/250000 files
+2024-08-26T02:42:04.302732Z 0 [Note] [MY-012201] [InnoDB] Checked 250000 files
+2024-08-26T02:42:04.328662Z 0 [Note] [MY-012201] [InnoDB] Checked 250000 files
+2024-08-26T02:42:04.350075Z 0 [Note] [MY-012201] [InnoDB] Checked 250000 files
+2024-08-26T02:42:04.650573Z 0 [Note] [MY-012201] [InnoDB] Checked 250000 files
+2024-08-26T02:42:04.758139Z 1 [Note] [MY-012208] [InnoDB] Completed space ID check of 1000004 files.
+2024-08-26T02:42:04.828591Z 1 [Note] [MY-012955] [InnoDB] Initializing buffer pool, total size = 128.000000M, instances = 1, chunk size =128.000000M 
+2024-08-26T02:42:04.945670Z 1 [Note] [MY-012957] [InnoDB] Completed initialization of buffer pool
+2024-08-26T02:42:05.055698Z 1 [Note] [MY-013532] [InnoDB] Using './#ib_16384_0.dblwr' for doublewrite
+2024-08-26T02:42:05.057071Z 1 [Note] [MY-013532] [InnoDB] Using './#ib_16384_1.dblwr' for doublewrite
+2024-08-26T02:42:05.091961Z 1 [Note] [MY-013566] [InnoDB] Double write buffer files: 2
+2024-08-26T02:42:05.092006Z 1 [Note] [MY-013565] [InnoDB] Double write buffer pages per instance: 4
+2024-08-26T02:42:05.092039Z 1 [Note] [MY-013532] [InnoDB] Using './#ib_16384_0.dblwr' for doublewrite
+2024-08-26T02:42:05.092056Z 1 [Note] [MY-013532] [InnoDB] Using './#ib_16384_1.dblwr' for doublewrite
+2024-08-26T02:42:05.091956Z 0 [Note] [MY-011952] [InnoDB] If the mysqld execution user is authorized, page cleaner thread priority can be changed. See the man page of setpriority().
+2024-08-26T02:42:05.235316Z 1 [Note] [MY-013883] [InnoDB] The latest found checkpoint is at lsn = 20350739 in redo log file ./#innodb_redo/#ib_redo6.
+2024-08-26T02:42:05.254490Z 1 [Note] [MY-013086] [InnoDB] Starting to parse redo log at lsn = 20350537, whereas checkpoint_lsn = 20350739 and start_lsn = 20350464
+2024-08-26T02:42:05.283492Z 1 [Note] [MY-013083] [InnoDB] Log background threads are being started...
+2024-08-26T02:42:05.360096Z 1 [Note] [MY-012532] [InnoDB] Applying a batch of 0 redo log records ...
+2024-08-26T02:42:05.360140Z 1 [Note] [MY-012535] [InnoDB] Apply batch completed!
+2024-08-26T02:42:05.360317Z 1 [Note] [MY-013252] [InnoDB] Using undo tablespace './undo_001'.
+2024-08-26T02:42:05.361151Z 1 [Note] [MY-013252] [InnoDB] Using undo tablespace './undo_002'.
+2024-08-26T02:42:05.362229Z 1 [Note] [MY-012910] [InnoDB] Opened 2 existing undo tablespaces.
+2024-08-26T02:42:05.362269Z 1 [Note] [MY-011980] [InnoDB] GTID recovery trx_no: 7001333
+2024-08-26T02:42:05.481572Z 1 [Note] [MY-013776] [InnoDB] Parallel initialization of rseg complete
+2024-08-26T02:42:05.481614Z 1 [Note] [MY-013777] [InnoDB] Time taken to initialize rseg using 2 thread: 119348 ms.
+2024-08-26T02:42:05.481687Z 1 [Note] [MY-012923] [InnoDB] Creating shared tablespace for temporary tables
+2024-08-26T02:42:05.482438Z 1 [Note] [MY-012265] [InnoDB] Setting file './ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+2024-08-26T02:42:05.507627Z 1 [Note] [MY-012266] [InnoDB] File './ibtmp1' size is now 12 MB.
+2024-08-26T02:42:05.521209Z 1 [Note] [MY-013627] [InnoDB] Scanning temp tablespace dir:'./#innodb_temp/'
+2024-08-26T02:42:05.544849Z 1 [Note] [MY-013018] [InnoDB] Created 128 and tracked 128 new rollback segment(s) in the temporary tablespace. 128 are now active.
+2024-08-26T02:42:05.545079Z 1 [Note] [MY-012976] [InnoDB] 8.0.39 started; log sequence number 20350749
+2024-08-26T02:42:05.565297Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2024-08-26T02:42:06.321319Z 1 [Note] [MY-011089] [Server] Data dictionary restarting version '80023'.
+2024-08-26T02:42:06.718098Z 1 [Note] [MY-012357] [InnoDB] Reading DD tablespace files
+2024-08-26T02:42:36.390311Z 0 [Note] [MY-012350] [InnoDB] 4threads have validated 330925 out of 1000006 tablespaces so far.
+2024-08-26T02:42:46.390349Z 0 [Note] [MY-012350] [InnoDB] 4threads have validated 610870 out of 1000006 tablespaces so far.
+2024-08-26T02:42:56.390389Z 0 [Note] [MY-012350] [InnoDB] 4threads have validated 828885 out of 1000006 tablespaces so far.
+2024-08-26T02:43:05.290580Z 1 [Note] [MY-012356] [InnoDB] Scanned 1000006 tablespaces. Validated 1000006.
+2024-08-26T02:43:05.426567Z 1 [Note] [MY-010006] [Server] Using data dictionary with version '80023'.
+2024-08-26T02:43:08.962971Z 0 [Note] [MY-011332] [Server] Plugin mysqlx reported: 'IPv6 is available'
+2024-08-26T02:43:09.047086Z 0 [Note] [MY-011323] [Server] Plugin mysqlx reported: 'X Plugin ready for connections. bind-address: '::' port: 18039'
+2024-08-26T02:43:09.059917Z 0 [Note] [MY-011323] [Server] Plugin mysqlx reported: 'X Plugin ready for connections. socket: '/tmp/mysqlx-18039.sock''
+2024-08-26T02:43:09.080863Z 0 [Note] [MY-010902] [Server] Thread priority attribute setting in Resource Group SQL shall be ignored due to unsupported platform or insufficient privilege.
+2024-08-26T02:43:09.092610Z 0 [Note] [MY-010856] [Server] Failed to open the crashed binlog file when source server is recovering it.
+2024-08-26T02:43:09.108766Z 0 [Note] [MY-013911] [Server] Crash recovery finished in binlog engine. No attempts to commit, rollback or prepare any transactions.
+2024-08-26T02:43:09.108820Z 0 [Note] [MY-013911] [Server] Crash recovery finished in InnoDB engine. No attempts to commit, rollback or prepare any transactions.
+2024-08-26T02:43:09.115318Z 0 [Note] [MY-012487] [InnoDB] DDL log recovery : begin
+2024-08-26T02:43:09.115973Z 0 [Note] [MY-012488] [InnoDB] DDL log recovery : end
+2024-08-26T02:43:09.183324Z 0 [Note] [MY-011946] [InnoDB] Loading buffer pool(s) from /mnt/jgagne_sandboxes/msb_mysql_8_0_39/data/ib_buffer_pool
+2024-08-26T02:43:09.321858Z 0 [Note] [MY-010913] [Server] You have not provided a mandatory server-id. Servers in a replication topology must have unique server-ids. Please refer to the proper server start-up parameters documentation.
+2024-08-26T02:43:09.323504Z 0 [Note] [MY-010182] [Server] Found ca.pem, server-cert.pem and server-key.pem in data directory. Trying to enable SSL support using them.
+2024-08-26T02:43:09.477245Z 0 [Note] [MY-010304] [Server] Skipping generation of SSL certificates as certificate files are present in data directory.
+2024-08-26T02:43:09.535269Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2024-08-26T02:43:09.535321Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2024-08-26T02:43:09.548446Z 0 [Note] [MY-010308] [Server] Skipping generation of RSA key pair through --sha256_password_auto_generate_rsa_keys as key files are present in data directory.
+2024-08-26T02:43:09.548708Z 0 [Note] [MY-010308] [Server] Skipping generation of RSA key pair through --caching_sha2_password_auto_generate_rsa_keys as key files are present in data directory.
+2024-08-26T02:43:09.552354Z 0 [Note] [MY-010252] [Server] Server hostname (bind-address): '127.0.0.1'; port: 8039
+2024-08-26T02:43:09.552377Z 0 [Note] [MY-010264] [Server]   - '127.0.0.1' resolves to '127.0.0.1';
+2024-08-26T02:43:09.552399Z 0 [Note] [MY-010251] [Server] Server socket created on IP: '127.0.0.1'.
+2024-08-26T02:43:09.699179Z 0 [Note] [MY-011025] [Repl] Failed to start replica threads for channel ''.
+2024-08-26T02:43:09.700457Z 5 [Note] [MY-010051] [Server] Event Scheduler: scheduler thread started with id 5
+2024-08-26T02:43:09.700498Z 0 [Note] [MY-011240] [Server] Plugin mysqlx reported: 'Using SSL configuration from MySQL Server'
+2024-08-26T02:43:09.702494Z 0 [Note] [MY-011243] [Server] Plugin mysqlx reported: 'Using OpenSSL for TLS connections'
+2024-08-26T02:43:09.702586Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 18039, socket: /tmp/mysqlx-18039.sock
+2024-08-26T02:43:09.702744Z 0 [System] [MY-010931] [Server] /home/jgagne/opt/mysql/mysql_8.0.39/bin/mysqld: ready for connections. Version: '8.0.39'  socket: '/tmp/mysql_sandbox8039.sock'  port: 8039  MySQL Community Server - GPL.
+2024-08-26T02:43:10.321911Z 0 [Note] [MY-011946] [InnoDB] Buffer pool(s) load completed at 240826  2:43:10
