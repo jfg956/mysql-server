@@ -180,6 +180,9 @@ https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/exp
 
 ...
 
+
+#### Duplicate Check
+
 In `Tablespace_dirs::scan`, `size_t n_threads = fil_get_scan_threads(ibd_files.size())`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/storage/innobase/fil/fil0fil.cc#L11449
 
@@ -191,6 +194,25 @@ In `Tablespace_dirs::scan`, `size_t n_threads = fil_get_scan_threads(ibd_files.s
 
 ...
 
+Duplicate Check fills a data structure for Tablespace Path Validation:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L11059
+
+...m_dirs is a "Scanned":
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L635
+
+...a Scanned is vector of Tablespace_files...
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L601
+
+...Tablespace_files has a add(space_id_t, std::string)...
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L2141
+
+...^^ add feeds a Paths (std::unordered_map<space_id_t, Names>)
+
+...
+
+
+#### Tablespace Validation
+
 Tablespace Path Validation, `Validate_files::validate`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/storage/innobase/handler/ha_innodb.cc#L3787
 
@@ -199,6 +221,11 @@ Tablespace Path Validation, `Validate_files::validate`:
 
 `Validate_files::validate` called here:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/storage/innobase/handler/ha_innodb.cc#L3879
+
+...
+
+
+#### Tablespace Reading
 
 "Reading DD tablespace files", which can take time, in this:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/storage/innobase/handler/ha_innodb.cc#L3872
@@ -259,6 +286,10 @@ Fix crash:
 - https://github.com/mysql/mysql-server/commit/19ff2707c448efc6b85429b42e5eabe242ddd0a6
 
 Making multi-threading actually working:
+- https://dev.mysql.com/doc/relnotes/mysql/8.0/en/news-8-0-39.html
+- https://dev.mysql.com/doc/relnotes/mysql/8.4/en/news-8-4-2.html
+- https://dev.mysql.com/doc/relnotes/mysql/9.0/en/news-9-0-1.html
+- InnoDB: Improved tablespace file scan performance at startup. (Bug #110402, Bug #35200385)
 - https://github.com/mysql/mysql-server/commit/8bc6454bfd8fc676aa047332b6c41c76a89c4357
 
 ...
@@ -359,7 +390,7 @@ int main(int argc, char** argv) {
   DIR * pdir = opendir(".");
 
   while (1) {
-    struct dirent *pdirent =  readdir(pdir);
+    struct dirent *pdirent = readdir(pdir);
     if (!pdirent) break;
     if (pdirent->d_name[0] == '.') continue;
 
