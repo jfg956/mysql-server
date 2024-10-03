@@ -181,6 +181,8 @@ https://github.com/jfg956/mysql-server/blob/8.0.39_explo_startup_many_tables/exp
 ...
 
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
 #### Duplicate Check
 
 In `Tablespace_dirs::scan`, `size_t n_threads = fil_get_scan_threads(ibd_files.size())`:
@@ -211,6 +213,8 @@ Duplicate Check fills a data structure for Tablespace Path Validation:
 ...
 
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
 #### Tablespace Validation
 
 Tablespace Path Validation, `Validate_files::validate`:
@@ -225,6 +229,8 @@ Tablespace Path Validation, `Validate_files::validate`:
 ...
 
 
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
 #### Tablespace Reading
 
 "Reading DD tablespace files", which can take time, in this:
@@ -235,6 +241,16 @@ Tablespace Path Validation, `Validate_files::validate`:
 
 ^^ calls `Dictionary_client::fetch`:
 - https://github.com/jfg956/mysql-server/blob/mysql-8.0.39/sql/dd/impl/cache/dictionary_client.cc#L2033
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### Other
+
+IMPLEMENTATION OF THE TABLESPACE MEMORY CACHE:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L225
 
 ...
 
