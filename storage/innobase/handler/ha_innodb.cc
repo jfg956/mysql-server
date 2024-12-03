@@ -23439,6 +23439,29 @@ static MYSQL_SYSVAR_STR(directories, srv_innodb_directories,
                         "'innodb-data-home-dir;innodb-undo-directory;datadir'",
                         nullptr, nullptr, nullptr);
 
+/* there is no point in changing this during runtime, thus readonly */
+/* above copied from buffer_pool_load_at_startup */
+/* I / JFG thinks above predates SET PERSIST...
+ * it might make sense to change the value for the next startup. */
+/* TODO: explore allowing to change this with SET PERSIST (but not SET GLOBAL). */
+static MYSQL_SYSVAR_INT(
+    tablespace_duplicate_check_threads, srv_tablespace_duplicate_check_threads,
+    PLUGIN_VAR_OPCMDARG | PLUGIN_VAR_READONLY | PLUGIN_VAR_NOPERSIST,
+    "Number of threads for tablespace duplicate check at startup: "
+    "-1 for auto-compute, 0 for scaning in main thread, 1 in one sub-thread, "
+    "n in sub-threads with spilling in main thread",
+    nullptr, /* check */
+    nullptr, /* update */
+    -1, /* def */
+    -1, /* min */
+    512, /* max, there might be edge-cases for more than 512 threads, but enough for now.
+          * Note that we need 256 threads to leverage 256k iops with 1 milisecond IO latency,
+          *   that AWS io2 EBS volumes can have up to 256k iops with latencies between 0.3 and 0.5 ms,
+          *   so 512 threads is not such an unrealistic max value (maybe this should even be 2048). */
+    0 /* blk, unclear what this is, doc (link below) not helpful, copied from others */);
+/* doc link for blk above:
+ * https://dev.mysql.com/doc/extending-mysql/8.0/en/plugin-status-system-variables.html */
+
 #ifdef UNIV_DEBUG
 /** Use this variable innodb_interpreter to execute debug code within InnoDB.
 The output is stored in the innodb_interpreter_output variable. */
@@ -23597,6 +23620,7 @@ static SYS_VAR *innobase_system_variables[] = {
     MYSQL_SYSVAR(sort_buffer_size),
     MYSQL_SYSVAR(online_alter_log_max_size),
     MYSQL_SYSVAR(directories),
+    MYSQL_SYSVAR(tablespace_duplicate_check_threads),
     MYSQL_SYSVAR(sync_spin_loops),
     MYSQL_SYSVAR(spin_wait_delay),
     MYSQL_SYSVAR(spin_wait_pause_multiplier),

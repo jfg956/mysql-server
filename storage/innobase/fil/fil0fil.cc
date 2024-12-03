@@ -11343,8 +11343,11 @@ dberr_t Tablespace_dirs::scan() {
   Space_id_set unique;
   Space_id_set duplicates;
 
-  /* Get the number of additional threads needed to scan the files. */
-  size_t n_threads = fil_get_scan_threads(ibd_files.size());
+  /* I removed a comment that was redundant, feel free to add it back if you think it added value.
+   * I left this comment for clarity of the patch, it can be removed when merging. */
+  size_t n_threads = (srv_tablespace_duplicate_check_threads == -1)
+                        ? fil_get_scan_threads(ibd_files.size())
+                        : srv_tablespace_duplicate_check_threads;
 
   if (n_threads > 0) {
     ib::info(ER_IB_MSG_382)
