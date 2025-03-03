@@ -55,13 +55,13 @@ Other interesting InnoDB Metrics (because ms):
 ### Code Notes
 
 `Innodb_buffer_pool_pages_flushed` status is defined / declared / exported / passed here (convoluted, see below):
-- defined (extern struct): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/srv0srv.h#L781
-- defined (struct): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/srv0srv.h#L1156
-- declared: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/srv/srv0srv.cc#L531
-- exported (array 1): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/handler/ha_innodb.cc#L1148
-- exported (array 2): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/handler/ha_innodb.cc#L22142
-- exported (pluggin): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/handler/ha_innodb.cc#L23630
-- passed: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/srv/srv0srv.cc#L1613
+- All InnoDB Status defined (extern struct): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/srv0srv.h#L781
+- ... defined (struct): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/srv0srv.h#L1156
+- ... declared: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/srv/srv0srv.cc#L531
+- ... array: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/handler/ha_innodb.cc#L1148
+- ... array for pluggin: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/handler/ha_innodb.cc#L22142
+- ... pluggin: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/handler/ha_innodb.cc#L23630
+- `Innodb_buffer_pool_pages_flushed` passed: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/srv/srv0srv.cc#L1613
 
 Arguably, all above is very convoluted.  I guess it is to have a "single" value for
 what is both a Global Status and an InnoDB Metric.  We see that all the intricacies
@@ -83,20 +83,56 @@ complicated...
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 Status `Innodb_buffer_pool_reads` / metric `buffer_pool_reads`:
-- status passed: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/srv/srv0srv.cc#L1615
+- ...
+- `Innodb_buffer_pool_reads` passed: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/srv/srv0srv.cc#L1615
 - from ^^, backend variable `srv_stats.buf_pool_reads`
 - declared: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/srv0srv.h#L118
 - metric 1: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/srv0mon.h#L171
 - metric 2: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/srv/srv0mon.cc#L233
 - metric 3 (lot of magic here): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/srv/srv0mon.cc#L1635
+- OVLD meaning: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/srv0mon.h#L126
 
 Where `srv_stats.buf_pool_reads` is incremented:
 - `buf_read_ahead_random`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/buf/buf0rea.cc#L284
 - `buf_read_page`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/buf/buf0rea.cc#L295
 - `buf_read_page_background`: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/buf/buf0rea.cc#L317
 
+All of above call `buf_read_page_low`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/buf/buf0rea.cc#L66
+
 ...
 
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### Rabit Holing in P_S
+
+Re `buf_read_page_low`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/buf/buf0rea.cc#L66
+
+^^ calls `fil_io`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L7909
+
+^^ calls `Fil_shard::do_io`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L7534
+
+^^ calls `os_aio`:
+- ... 
+
+...
+
+```
+performance_schema
+file_summary_by_event_name
+EVENT_NAME = 'wait/io/file/innodb/innodb_data_file'
+```
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/include/os0file.h#L795
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/os/os0file.cc#L294
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/handler/ha_innodb.cc#L888
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/handler/ha_innodb.cc#L638
+- ...
+
+...
 
 <!-- EOF -->
 
