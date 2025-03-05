@@ -124,6 +124,12 @@ Without PS, `os_aio` calls directly `os_aio_func`, but with, it calls
 `pfs_os_aio_func` which is is inlining P_S instrumentation around `os_aio`:
 - https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.ic#L162
 
+These instruments are:
+- register_pfs_file_io_begin: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/include/os0file.h#L863
+- register_pfs_file_io_end: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/include/os0file.h#L875
+
+`register_pfs_file_io_begin` is rewfering to `file.m_psi`, and we will come back to this...
+
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
 In above, there is no trace of the type / class of InnoDB IO (log, data, ...).
@@ -151,7 +157,7 @@ Below, example:
 ^^ calls `os_file_create` with `innodb_data_file_key`, which when compiled with P_S, lands here:
 - https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.ic#L116
 
-In ^^, the call to `register_pfs_file_open_end` modifies `file.m_psi` ...
+In ^^, the call to `register_pfs_file_open_end` modifies `file.m_psi`...
 - https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.h#L841
 
 In ^^, `file` is a `pfs_os_file_t` which is:
@@ -160,6 +166,7 @@ In ^^, `file` is a `pfs_os_file_t` which is:
 Also in ^^, `PSI_FILE_CALL` is...
 - defined here: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/include/pfs_file_provider.h#L55
 - ends-up calling: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/perfschema/pfs.cc#L5549
+
 ...
 
 <!-- EOF -->
