@@ -116,22 +116,50 @@ Re `buf_read_page_low`:
 ^^ calls `Fil_shard::do_io`:
 - https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L7534
 
-^^ calls `os_aio`:
-- ... 
+^^ calls `os_aio`.  But `os_aio` is complicated:
+- with P_S: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.h#L945
+- without: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.h#L1296
 
-...
+Without PS, `os_aio` calls directly `os_aio_func`, but with, it calls
+`pfs_os_aio_func` which is is inlining P_S instrumentation around `os_aio`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.ic#L162
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+In above, there is no trace of the type / class of InnoDB IO (log, data, ...).
+These types are defined here:
+- key declarations: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/include/os0file.h#L789
+- key definition: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/os/os0file.cc#L292
+- PSI_file_info from ^^: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/handler/ha_innodb.cc#L888
+- PSI_KEY: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/handler/ha_innodb.cc#L638
+- registration of PSI_file_info: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/handler/ha_innodb.cc#L5630
+
+(our interest is in the key `innodb_data_file_key` which generates below)
 
 ```
 performance_schema
 file_summary_by_event_name
 EVENT_NAME = 'wait/io/file/innodb/innodb_data_file'
 ```
-- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/include/os0file.h#L795
-- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/os/os0file.cc#L294
-- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/handler/ha_innodb.cc#L888
-- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/handler/ha_innodb.cc#L638
-- ...
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
+It looks like the type of IO is saved at file opening time...
+
+Below, example:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/fil/fil0fil.cc#L2938
+
+^^ calls `os_file_create` with `innodb_data_file_key`, which when compiled with P_S, lands here:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.ic#L116
+
+In ^^, the call to `register_pfs_file_open_end` modifies `file.m_psi` ...
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.h#L841
+
+In ^^, `file` is a `pfs_os_file_t` which is:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.h#L176 
+
+Also in ^^, `PSI_FILE_CALL` is...
+- defined here: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/include/pfs_file_provider.h#L55
+- ends-up calling: https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/perfschema/pfs.cc#L5549
 ...
 
 <!-- EOF -->
