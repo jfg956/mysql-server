@@ -169,5 +169,51 @@ Also in ^^, `PSI_FILE_CALL` is...
 
 ...
 
+Exploring above, I open a bug:
+- https://bugs.mysql.com/bug.php?id=117625
+
+...
+
+Ugly mixing or read/write acounting (dbl and unexact accounting):
+- https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/os0file.ic#L260
+
+...
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+After looking at P_S, unclear bhow to hook myself in there...
+
+Maybe I will have better chances with InnoDB Sessions...
+
+...
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+#### InnoDB Sessions
+
+`thd_to_innodb_session`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/handler/ha_innodb.cc#L2011
+
+`class innodb_session_t`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/include/sess0sess.h#L71
+
+In `innodb_session_t`, there is a `trx_t`:
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/include/sess0sess.h#L153
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/include/trx0trx.h#L675
+
+...
+
+`check_trx_exists(current_thd)`
+- https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/fil/fil0fil.cc#L9635
+
+...
+
+I could use the `innodb_session_t` to carry information beween `buf_read_page`
+and `os_aio_func`:
+- `buf_read_page`: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/buf/buf0rea.cc#L288
+- `os_aio_func`: https://github.com/jfg956/mysql-server/blob/mysql-9.2.0/storage/innobase/os/os0file.cc#L6783
+
+--> os_aio_func could indicate how long the IO took, and buf_read_page could interpret that data.
+
 <!-- EOF -->
 
