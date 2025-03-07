@@ -41,15 +41,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
 #include "os0file.h"
 #include "fil0fil.h"
+#include "dict0dd.h"
+#include "current_thd.h"
 #include "ha_prototypes.h"
 #include "log0write.h"
 #include "my_dbug.h"
 #include "my_io.h"
 
-#include "fil0fil.h"
-#include "ha_prototypes.h"
+#include "fil0fil.h"        /* I / JFG do not understand duplicate with above, maybe should be removed, but out of scope of my patch. */
+#include "ha_prototypes.h"  /* I / JFG do not understand duplicate with above, ... */
 #include "my_macros.h"
-#include "os0file.h"
+#include "os0file.h"        /* I / JFG do not understand duplicate with above, ... */
 #include "sql_const.h"
 #include "srv0srv.h"
 #include "srv0start.h"
@@ -6802,6 +6804,8 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
   ut_ad((n & 0xFFFFFFFFUL) == n);
 #endif /* _WIN32 */
 
+  auto start = std::chrono::steady_clock::now();
+
   if (aio_mode == AIO_mode::SYNC) {
     /* This is actually an ordinary synchronous read or write:
     no need to use an i/o-handler thread. NOTE that if we use
@@ -6814,12 +6818,22 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     Performance Schema instrumented os_file_read() and
     os_file_write(). Instead, we should use os_file_read_func()
     and os_file_write_func() */
+    dberr_t ret;
     if (type.is_read()) {
-      return (os_file_read_func(type, name, file.m_file, buf, offset, n));
+      ret = (os_file_read_func(type, name, file.m_file, buf, offset, n));
+    } else {
+      ut_ad(type.is_write());
+      ret = (os_file_write_func(type, name, file.m_file, buf, offset, n));
     }
 
-    ut_ad(type.is_write());
-    return (os_file_write_func(type, name, file.m_file, buf, offset, n));
+    /* I / JFG am guessing that we can end-up here with one of these being null, so let's be safe. */
+    if (current_thd && thd_to_innodb_session(current_thd)) {
+      auto end = std::chrono::steady_clock::now();
+      ulint time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+      thd_to_innodb_session(current_thd)->last_io_wait_usec = time_us;
+    }
+
+    return ret;
   }
 
   const auto array = AIO::select_slot_array(type, read_only, aio_mode);
@@ -6912,6 +6926,13 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
         return DB_IO_ERROR;
       }
     }
+  }
+
+  /* I / JFG am guessing that we can end-up here with one of these being null, so let's be safe. */
+  if (current_thd && thd_to_innodb_session(current_thd)) {
+    auto end = std::chrono::steady_clock::now();
+    ulint time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    thd_to_innodb_session(current_thd)->last_io_wait_usec = time_us;
   }
 
   /* AIO request was dispatched successfully! */

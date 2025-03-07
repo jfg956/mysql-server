@@ -215,5 +215,17 @@ and `os_aio_func`:
 
 --> os_aio_func could indicate how long the IO took, and buf_read_page could interpret that data.
 
+...
+
+## Notes...
+
+...
+
+```
+fs="$(echo storage/innobase/{buf/buf0rea.cc,handler/ha_innodb.cc,include/{sess0sess.h,srv0{mon,srv}.h},os/os0file.cc,srv/srv0{mon,srv}.cc})"
+```
+
+...
+
 <!-- EOF -->
 

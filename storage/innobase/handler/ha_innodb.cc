@@ -1178,6 +1178,18 @@ static SHOW_VAR innodb_status_variables[] = {
      SHOW_SCOPE_GLOBAL},
     {"buffer_pool_reads", (char *)&export_vars.innodb_buffer_pool_reads,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    {"buffer_pool_reads_sync_io_count",
+     (char *)&export_vars.innodb_buffer_pool_reads_sync_io_count,
+     SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    {"buffer_pool_reads_sync_io_wait_usec",
+     (char *)&export_vars.innodb_buffer_pool_reads_sync_io_wait_usec,
+     SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    {"buffer_pool_reads_sync_io_slow_count",
+     (char *)&export_vars.innodb_buffer_pool_reads_sync_io_slow_count,
+     SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    {"buffer_pool_reads_sync_io_slow_wait_usec",
+     (char *)&export_vars.innodb_buffer_pool_reads_sync_io_slow_wait_use,
+     SHOW_LONG, SHOW_SCOPE_GLOBAL},
     {"buffer_pool_wait_free", (char *)&export_vars.innodb_buffer_pool_wait_free,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
     {"buffer_pool_write_requests",
@@ -5359,6 +5371,44 @@ static PSI_metric_info_v1 buffer_metrics[] = {
      "Number of reads directly from disk (innodb_buffer_pool_reads)",
      MetricOTELType::ASYNC_COUNTER,
      export_vars.innodb_buffer_pool_reads),
+
+    /* I / JFG do not understand how these are used, so I am blindly copying from above (innodb_buffer_pool_reads).
+     * From what I see, these ends-up un the table p_s.setup_metrics, but this table does not include the counters.
+     * Unclear to me where these counters are exposed in P_S.
+     * Overall, I put these counters in 3 places: 1. here; 2. global statuses; 3. InnoDB metrics.
+     * I wished things were more simple and exposed in less places, but I understand legacy
+     *   (at first, there were statuses, then later wer got metrics, and then we got P_S).
+     * If there was a clear deprecation path of one or two of these, it would make me happier.
+     * Also, not introducing the new counters at the deprecated places would nodge people to not use deprecated. */
+    // TODO JFG: before submitting the patch, make sure comments in below match srv0mon.cc.
+    simple("reads_sync_io_count",
+     "",
+     "Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count), "
+     "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
+     "(sync reads exclude read ahead and read ahead ramdom)",
+     MetricOTELType::ASYNC_COUNTER,
+     export_vars.innodb_buffer_pool_reads_sync_io_count),
+    simple("reads_sync_io_wait_usec",
+     "",
+     "Total wait time, in microseconds, for buf_pool_reads_sync_io_count "
+     "(innodb_buffer_pool_reads_sync_io_wait_usec)",
+     MetricOTELType::ASYNC_COUNTER,
+     export_vars.innodb_buffer_pool_reads_sync_io_wait_usec),
+    simple("reads_sync_io_slow_count",
+     "",
+     "Number of sync reads directly from disk greater than innodb_buffer_pool_read_slow_io_threshold_usec"
+     "(innodb_buffer_pool_reads_sync_io_slow_count), "
+     "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
+     "(sync reads exclude read ahead and read ahead ramdom)",
+     MetricOTELType::ASYNC_COUNTER,
+     export_vars.innodb_buffer_pool_reads_sync_io_slow_count),
+    simple("reads_sync_io_slow_wait_use",
+     "",
+     "Total wait time, in microseconds, for buf_pool_reads_sync_io_slow_count "
+     "(innodb_buffer_pool_reads_sync_io_slow_wait_usec)",
+     MetricOTELType::ASYNC_COUNTER,
+     export_vars.innodb_buffer_pool_reads_sync_io_slow_wait_use),
+
     simple("wait_free",
      "",
      "Number of times waited for free buffer (innodb_buffer_pool_wait_free)",
@@ -22730,6 +22780,29 @@ static MYSQL_SYSVAR_BOOL(
     "Load the buffer pool from a file named @@innodb_buffer_pool_filename",
     nullptr, nullptr, true);
 
+/* I / JFG chose these names...
+ *   - variable: buffer_pool_read_sync_slow_io_threshold_usec
+ *   - metrics:  buf_pool_reads_sync_io_{count,wait_usec,slow_count,slow_wait_usec}
+ * ...over these...
+ *   - io_read_sync_page_slow_threshold_usec
+ *   - io_read_sync_page_slow_{count,wait_usec,slow_count,slow_wait_usec}
+ * ...because I thought these belongs in buf instead of os
+ *   (most of the accounting logic is in buf, more precisely buf_read_page),
+ *   but I could be convinced of doing the other way around. */
+/* In below, max set to 1 hour: IOs longer than that would be catastrophic. */
+static MYSQL_SYSVAR_LONG(buffer_pool_read_sync_slow_io_threshold_usec, srv_buffer_pool_read_sync_slow_io_threshold_usec,
+                         PLUGIN_VAR_RQCMDARG,
+                         "The threshold, in microseconds, from which IOs for sync buffer pool reads "
+                         "(sync reads exclude read ahead and read ahead ramdom), "
+                         "are considered slow and accounted as such "
+                         "(in global statuses innodb_buffer_pool_reads_sync_io_slow_{count,wait_usec} "
+                         "and InnoDB Metrics buf_pool_reads_sync_io_slow_{count,wait_usec})",
+                         nullptr, nullptr, /* check, update */
+                         -1, -1, (((long)1000)*1000*60*60), /* def, min, max (1 hour) */
+                         0 /* blk, unclear what this is, doc (link below) not helpful, copied from others */);
+/* doc link for blk above:
+ * https://dev.mysql.com/doc/extending-mysql/8.0/en/plugin-status-system-variables.html */
+
 static MYSQL_SYSVAR_ULONG(lru_scan_depth, srv_LRU_scan_depth,
                           PLUGIN_VAR_RQCMDARG,
                           "How deep to scan LRU to keep it clean", nullptr,
@@ -23510,6 +23583,7 @@ static SYS_VAR *innobase_system_variables[] = {
     MYSQL_SYSVAR(buffer_pool_load_now),
     MYSQL_SYSVAR(buffer_pool_load_abort),
     MYSQL_SYSVAR(buffer_pool_load_at_startup),
+    MYSQL_SYSVAR(buffer_pool_read_sync_slow_io_threshold_usec),
     MYSQL_SYSVAR(lru_scan_depth),
     MYSQL_SYSVAR(flush_neighbors),
     MYSQL_SYSVAR(checksum_algorithm),

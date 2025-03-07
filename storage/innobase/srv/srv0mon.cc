@@ -235,6 +235,33 @@ static monitor_info_t innodb_counter_info[] = {
      static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
      MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS},
 
+    {"buf_pool_reads_sync_io_count", "buffer",
+     "Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count), "
+     "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
+     "(sync reads exclude read ahead and read ahead ramdom)",
+     static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
+     MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_COUNT},
+
+    {"buf_pool_reads_sync_io_wait_usec", "buffer",
+     "Total wait time, in microseconds, for buf_pool_reads_sync_io_count "
+     "(innodb_buffer_pool_reads_sync_io_wait_usec)",
+     static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
+     MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_WAIT_USEC},
+
+    {"buf_pool_reads_sync_io_slow_count", "buffer",
+     "Number of sync reads directly from disk greater than innodb_buffer_pool_read_slow_io_threshold_usec"
+     "(innodb_buffer_pool_reads_sync_io_slow_count), "
+     "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
+     "(sync reads exclude read ahead and read ahead ramdom)",
+     static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
+     MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_SLOW_COUNT},
+
+    {"buf_pool_reads_sync_io_slow_wait_usec", "buffer",
+     "Total wait time, in microseconds, for buf_pool_reads_sync_io_slow_count "
+     "(innodb_buffer_pool_reads_sync_io_slow_wait_usec)",
+     static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
+     MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_SLOW_WAIT_USEC},
+
     {"buffer_pool_read_requests", "buffer",
      "Number of logical read requests (innodb_buffer_pool_read_requests)",
      static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
@@ -1633,6 +1660,30 @@ void srv_mon_process_existing_counter(
     disk (page not in buffer) */
     case MONITOR_OVLD_BUF_POOL_READS:
       value = srv_stats.buf_pool_reads;
+      break;
+
+    /* Documented in "static monitor_info_t innodb_counter_info[]" above. */
+    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+    case MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_COUNT:
+      value = srv_stats.buf_pool_reads_sync_io_count;
+      break;
+
+    /* Documented in "static monitor_info_t innodb_counter_info[]"" above. */
+    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+    case MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_WAIT_USEC:
+      value = srv_stats.buf_pool_reads_sync_io_wait_usec;
+      break;
+
+    /* Documented in "static monitor_info_t innodb_counter_info[]"" above. */
+    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+    case MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_SLOW_COUNT:
+      value = srv_stats.buf_pool_reads_sync_io_slow_count;
+      break;
+
+    /* Documented in "static monitor_info_t innodb_counter_info[]"" above. */
+    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+    case MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_SLOW_WAIT_USEC:
+      value = srv_stats.buf_pool_reads_sync_io_slow_wait_usec;
       break;
 
     /* innodb_buffer_pool_read_requests, the number of logical

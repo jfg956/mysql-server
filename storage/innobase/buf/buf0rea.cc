@@ -40,6 +40,8 @@ this program; if not, write to the Free Software Foundation, Inc.,
 #include "buf0lru.h"
 #include "buf0rea.h"
 #include "fil0fil.h"
+#include "dict0dd.h"
+#include "current_thd.h"
 #include "ha_prototypes.h"
 #include "ibuf0ibuf.h"
 #include "log0recv.h"
@@ -293,6 +295,25 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
                             page_size, false);
 
   srv_stats.buf_pool_reads.add(count);
+
+  if (count > 0
+      && current_thd
+      && thd_to_innodb_session(current_thd)
+      && srv_buffer_pool_read_sync_slow_io_threshold_usec > -1) {
+    ulint usec = thd_to_innodb_session(current_thd)->last_io_wait_usec;
+
+    /* In addition to the counter srv_stats.buf_pool_reads,
+     *   we have buf_pool_reads_sync_io_count because buf_pool_reads
+     *   is incremented elsewhere (buf_read_ahead_random and buf_read_page_background) .*/
+    srv_stats.buf_pool_reads_sync_io_count.add(count);
+    srv_stats.buf_pool_reads_sync_io_wait_usec.add(usec);
+
+    /* The cast below is safe, because we know it is gt -1 as of if above. */
+    if (usec > (ulint)srv_buffer_pool_read_sync_slow_io_threshold_usec) {
+      srv_stats.buf_pool_reads_sync_io_slow_count.add(count);
+      srv_stats.buf_pool_reads_sync_io_slow_wait_usec.add(usec);
+    }
+  }
 
   if (err == DB_TABLESPACE_DELETED) {
     ib::error(ER_IB_MSG_141) << "trying to read page " << page_id
