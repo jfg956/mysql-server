@@ -5372,14 +5372,10 @@ static PSI_metric_info_v1 buffer_metrics[] = {
      MetricOTELType::ASYNC_COUNTER,
      export_vars.innodb_buffer_pool_reads),
 
-    /* I / JFG do not understand how these are used, so I am blindly copying from above (innodb_buffer_pool_reads).
-     * From what I see, these ends-up un the table p_s.setup_metrics, but this table does not include the counters.
-     * Unclear to me where these counters are exposed in P_S.
-     * Overall, I put these counters in 3 places: 1. here; 2. global statuses; 3. InnoDB metrics.
-     * I wished things were more simple and exposed in less places, but I understand legacy
-     *   (at first, there were statuses, then later wer got metrics, and then we got P_S).
-     * If there was a clear deprecation path of one or two of these, it would make me happier.
-     * Also, not introducing the new counters at the deprecated places would nodge people to not use deprecated. */
+    /* I / JFG do not fully fully understand this,
+     *   so I am blindly copying from above (innodb_buffer_pool_reads).
+     * I am guessing this is related to OpenTelemetry,
+     *   and I opened a bug about this: https://bugs.mysql.com/bug.php?id=117659. */
     // TODO JFG: before submitting the patch, make sure comments in below match srv0mon.cc.
     simple("reads_sync_io_count",
      "",
