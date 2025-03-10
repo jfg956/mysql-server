@@ -22786,16 +22786,16 @@ static MYSQL_SYSVAR_BOOL(
  *   (most of the accounting logic is in buf, more precisely buf_read_page),
  *   but I could be convinced of doing the other way around. */
 /* In below, max set to 1 hour: IOs longer than that would be catastrophic. */
-static MYSQL_SYSVAR_LONG(buffer_pool_read_sync_slow_io_threshold_usec, srv_buffer_pool_read_sync_slow_io_threshold_usec,
-                         PLUGIN_VAR_RQCMDARG,
-                         "The threshold, in microseconds, from which IOs for sync buffer pool reads "
-                         "(sync reads exclude read ahead and read ahead ramdom), "
-                         "are considered slow and accounted as such "
-                         "(in global statuses innodb_buffer_pool_reads_sync_io_slow_{count,wait_usec} "
-                         "and InnoDB Metrics buf_pool_reads_sync_io_slow_{count,wait_usec})",
-                         nullptr, nullptr, /* check, update */
-                         -1, -1, (((long)1000)*1000*60*60), /* def, min, max (1 hour) */
-                         0 /* blk, unclear what this is, doc (link below) not helpful, copied from others */);
+static MYSQL_SYSVAR_ULONG(buffer_pool_read_sync_slow_io_threshold_usec, srv_buffer_pool_read_sync_slow_io_threshold_usec,
+                          PLUGIN_VAR_RQCMDARG,
+                          "The threshold, in microseconds, from which IOs for sync buffer pool reads "
+                          "(sync reads exclude read ahead and read ahead ramdom), "
+                          "are considered slow and accounted as such "
+                          "(in global statuses innodb_buffer_pool_reads_sync_io_slow_{count,wait_usec} "
+                          "and InnoDB Metrics buf_pool_reads_sync_io_slow_{count,wait_usec})",
+                          nullptr, nullptr, /* check, update */
+                          (((long)1000)*1000*60*60), 0, (((long)1000)*1000*60*60), /* def / max, min, max (1 hour) */
+                          0 /* blk, unclear what this is, doc (link below) not helpful, copied from others */);
 /* doc link for blk above:
  * https://dev.mysql.com/doc/extending-mysql/8.0/en/plugin-status-system-variables.html */
 

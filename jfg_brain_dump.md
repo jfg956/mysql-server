@@ -262,14 +262,15 @@ and `os_aio_func`:
 ```
 fs="$(echo storage/innobase/{buf/buf0rea.cc,handler/ha_innodb.cc,include/{sess0sess.h,srv0{mon,srv}.h},os/os0file.cc,srv/srv0{mon,srv}.cc})"
 
-( ~/opt/mysql/mysql_9.2.0/bin
-  cp mysqld{,_org}
+( cd ~/opt/mysql/mysql_9.2.0/bin
+  test -e mysqld_org || cp mysqld{,_org}
   cp ~/src/mysql-server/worktrees/9.2.0_compile/build/default/bin/mysqld ./mysqld_compile
-  cp ~/src/mysql-server/worktrees/9.2.0_explo_innodb_read_tail_latencies/build/default/bin/mysqld ./mysqld_compile
+  cp ~/src/mysql-server/worktrees/9.2.0_explo_innodb_read_tail_latencies/build/default/bin/mysqld ./mysqld_explo
   ls -l mysqld_*; )
 
 dbdeployer deploy single mysql_9.2.0
 
+mv=9.2.0
 function set_bin() {
   test -e ~/opt/mysql/mysql_$mv/bin/mysqld_$1 || {
     echo "File not found: ~/opt/mysql/mysql_$mv/bin/mysqld_$1"
@@ -283,6 +284,46 @@ function set_bin() {
   )
 }
 
+{
+gv=innodb_buffer_pool_read_sync_slow_io_threshold_usec
+sql1="select count(*) from global_variables where VARIABLE_NAME = '$gv';"
+
+gss="$(echo {count,wait_usec,slow_count,slow_wait_usec})"
+vars2="$(for gs in $gss; do echo -n ",'innodb_buffer_pool_reads_sync_io_$gs'"; done)"
+sql2="select count(*) from global_status where VARIABLE_NAME in (${vars2:1});"
+
+vars3="$(for gs in $gss; do echo -n ",'buf_pool_reads_sync_io_$gs'"; done)"
+sql3="select count(*) from INNODB_METRICS where NAME in (${vars3:1});"
+
+for bin in org explo; do
+  ./stop; set_bin $bin; ./start
+  ./use -N performance_schema <<< "$sql1 $sql2"
+  ./use -N information_schema <<< "$sql3"
+done
+
+sql1="select VARIABLE_NAME, VARIABLE_VALUE from global_variables where VARIABLE_NAME = '$gv';"
+sql2="select VARIABLE_NAME, VARIABLE_VALUE from global_status where VARIABLE_NAME in (${vars2:1});"
+sql3="select NAME, SUBSYSTEM, COUNT, STATUS, TYPE, COMMENT from INNODB_METRICS where NAME in (${vars3:1});"
+./use --table performance_schema <<< "$sql1 $sql2"
+./use --table information_schema <<< "$sql3"
+}
+
+...
+
+I HAVE A BUG, TBC...
++-----------------------------------------------------+----------------+
+| VARIABLE_NAME                                       | VARIABLE_VALUE |
++-----------------------------------------------------+----------------+
+| innodb_buffer_pool_read_sync_slow_io_threshold_usec | 0              |
++-----------------------------------------------------+----------------+
++-------------------------------------------------+----------------+
+| VARIABLE_NAME                                   | VARIABLE_VALUE |
++-------------------------------------------------+----------------+
+| Innodb_buffer_pool_reads_sync_io_count          | 270            |
+| Innodb_buffer_pool_reads_sync_io_slow_count     | 3              |
+| Innodb_buffer_pool_reads_sync_io_slow_wait_usec | 31965          |
+| Innodb_buffer_pool_reads_sync_io_wait_usec      | 2851248        |
++-------------------------------------------------+----------------+
 
 ...
 ```

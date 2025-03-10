@@ -236,8 +236,7 @@ static monitor_info_t innodb_counter_info[] = {
      MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS},
 
     {"buf_pool_reads_sync_io_count", "buffer",
-     "Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count), "
-     "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
+     "Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count) "
      "(sync reads exclude read ahead and read ahead ramdom)",
      static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
      MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_COUNT},
@@ -249,10 +248,8 @@ static monitor_info_t innodb_counter_info[] = {
      MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_WAIT_USEC},
 
     {"buf_pool_reads_sync_io_slow_count", "buffer",
-     "Number of sync reads directly from disk greater than innodb_buffer_pool_read_slow_io_threshold_usec"
-     "(innodb_buffer_pool_reads_sync_io_slow_count), "
-     "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
-     "(sync reads exclude read ahead and read ahead ramdom)",
+     "Number of sync reads directly from disk greater than or equal innodb_buffer_pool_read_slow_io_threshold_usec "
+     "(innodb_buffer_pool_reads_sync_io_slow_count)",
      static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
      MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_SLOW_COUNT},
 

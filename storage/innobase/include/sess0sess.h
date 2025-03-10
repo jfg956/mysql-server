@@ -160,7 +160,7 @@ class innodb_session_t {
   /* I / JFG wished there was a better way to carry this from os_aio_func to buf_read_page,
    *   and yes, I agree this is ugly, but I did not think of a better way.
    *   If you figure-out a better way, let me know. */
-  ulint last_io_wait_usec;
+  ulong last_io_wait_usec;
 
  private:
   /** Current session's user temp tablespace */

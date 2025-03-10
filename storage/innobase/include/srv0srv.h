@@ -336,7 +336,7 @@ extern bool srv_buffer_pool_load_at_startup;
 
 /* Documented in ha_innodb.cc. */
 /* It looks pointless to duplicate comments; if needed, let me / JFG know and I will fix. */
-extern long srv_buffer_pool_read_sync_slow_io_threshold_usec;
+extern ulong srv_buffer_pool_read_sync_slow_io_threshold_usec;
 
 /* Whether to disable file system cache if it is defined */
 extern bool srv_disable_sort_file_cache;

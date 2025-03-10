@@ -6827,9 +6827,11 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     }
 
     /* I / JFG am guessing that we can end-up here with one of these being null, so let's be safe. */
+    /* Would be better to avoid duplication of code with below, but this function design
+     *   (early return here) makes this harder than duplicating the code. */
     if (current_thd && thd_to_innodb_session(current_thd)) {
       auto end = std::chrono::steady_clock::now();
-      ulint time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+      ulong time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
       thd_to_innodb_session(current_thd)->last_io_wait_usec = time_us;
     }
 
@@ -6929,9 +6931,11 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
   }
 
   /* I / JFG am guessing that we can end-up here with one of these being null, so let's be safe. */
+  /* Would be better to avoid duplication of code with above, but this function design
+   *   (early return above) makes this harder than duplicating the code. */
   if (current_thd && thd_to_innodb_session(current_thd)) {
     auto end = std::chrono::steady_clock::now();
-    ulint time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    ulong time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     thd_to_innodb_session(current_thd)->last_io_wait_usec = time_us;
   }
 

@@ -799,7 +799,7 @@ bool srv_buffer_pool_load_at_startup = true;
 
 /* Documented in ha_innodb.cc. */
 /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
-long srv_buffer_pool_read_sync_slow_io_threshold_usec;
+ulong srv_buffer_pool_read_sync_slow_io_threshold_usec;
 
 /** Slot index in the srv_sys->sys_threads array for the purge thread. */
 static const ulint SRV_PURGE_SLOT = 1;

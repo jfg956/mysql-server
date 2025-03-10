@@ -298,9 +298,9 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
 
   if (count > 0
       && current_thd
-      && thd_to_innodb_session(current_thd)
-      && srv_buffer_pool_read_sync_slow_io_threshold_usec > -1) {
-    ulint usec = thd_to_innodb_session(current_thd)->last_io_wait_usec;
+      && thd_to_innodb_session(current_thd)) {
+    ulong usec = thd_to_innodb_session(current_thd)->last_io_wait_usec;
+    ut_ad(usec >= 0);
 
     /* In addition to the counter srv_stats.buf_pool_reads,
      *   we have buf_pool_reads_sync_io_count because buf_pool_reads
@@ -309,7 +309,7 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
     srv_stats.buf_pool_reads_sync_io_wait_usec.add(usec);
 
     /* The cast below is safe, because we know it is gt -1 as of if above. */
-    if (usec > (ulint)srv_buffer_pool_read_sync_slow_io_threshold_usec) {
+    if (usec >= srv_buffer_pool_read_sync_slow_io_threshold_usec) {
       srv_stats.buf_pool_reads_sync_io_slow_count.add(count);
       srv_stats.buf_pool_reads_sync_io_slow_wait_usec.add(usec);
     }
