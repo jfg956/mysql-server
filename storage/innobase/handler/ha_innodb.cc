@@ -22794,7 +22794,7 @@ static MYSQL_SYSVAR_ULONG(buffer_pool_read_sync_slow_io_threshold_usec, srv_buff
                           "(in global statuses innodb_buffer_pool_reads_sync_io_slow_{count,wait_usec} "
                           "and InnoDB Metrics buf_pool_reads_sync_io_slow_{count,wait_usec})",
                           nullptr, nullptr, /* check, update */
-                          (((long)1000)*1000*60*60), 0, (((long)1000)*1000*60*60), /* def / max, min, max (1 hour) */
+                          (((ulong)1000)*1000*60*60), 0, (((ulong)1000)*1000*60*60), /* def / max, min, max (1 hour) */
                           0 /* blk, unclear what this is, doc (link below) not helpful, copied from others */);
 /* doc link for blk above:
  * https://dev.mysql.com/doc/extending-mysql/8.0/en/plugin-status-system-variables.html */

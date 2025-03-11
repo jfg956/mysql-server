@@ -25,6 +25,7 @@ TBC: discussion about my implementation:
 - ugly carrying info to `buf_read_page` from `os_aio_func` via `innodb_session_t`...
 - always timing `os_aio_func`, overhead should be small compared to doing an IO...
 - counters in buf instead of os, but could be convinced otherwise...
+- SET PERSIST weirdness...
 - ...
 
 TBC: add test...
@@ -285,10 +286,11 @@ function set_bin() {
 }
 
 {
+gss="$(echo {count,wait_usec,slow_count,slow_wait_usec})"
+
 gv=innodb_buffer_pool_read_sync_slow_io_threshold_usec
 sql1="select count(*) from global_variables where VARIABLE_NAME = '$gv';"
 
-gss="$(echo {count,wait_usec,slow_count,slow_wait_usec})"
 vars2="$(for gs in $gss; do echo -n ",'innodb_buffer_pool_reads_sync_io_$gs'"; done)"
 sql2="select count(*) from global_status where VARIABLE_NAME in (${vars2:1});"
 
@@ -296,7 +298,7 @@ vars3="$(for gs in $gss; do echo -n ",'buf_pool_reads_sync_io_$gs'"; done)"
 sql3="select count(*) from INNODB_METRICS where NAME in (${vars3:1});"
 
 for bin in org explo; do
-  ./stop; set_bin $bin; ./start
+  echo; echo $bin; { ./stop; set_bin $bin; ./start; } > /dev/null
   ./use -N performance_schema <<< "$sql1 $sql2"
   ./use -N information_schema <<< "$sql3"
 done
@@ -304,28 +306,108 @@ done
 sql1="select VARIABLE_NAME, VARIABLE_VALUE from global_variables where VARIABLE_NAME = '$gv';"
 sql2="select VARIABLE_NAME, VARIABLE_VALUE from global_status where VARIABLE_NAME in (${vars2:1});"
 sql3="select NAME, SUBSYSTEM, COUNT, STATUS, TYPE, COMMENT from INNODB_METRICS where NAME in (${vars3:1});"
+
+echo; echo Values
 ./use --table performance_schema <<< "$sql1 $sql2"
 ./use --table information_schema <<< "$sql3"
+
+echo; echo Set Persist
+./use <<< "set persist $gv = 0;"
+{ ./stop; ./start; } > /dev/null
+./use --table performance_schema <<< "$sql2"
+
+echo; echo In conf. File
+./use <<< "reset persist $gv;"
+echo "$gv = 0" >> my.sandbox.cnf
+{ ./stop; ./start; } > /dev/null
+./use --table performance_schema <<< "$sql2"
+sed -i -e "/$gv/d" my.sandbox.cnf
 }
 
-...
+#######################################
+### There is a weird behavior in below.
+### The SET PERSIST becomes active late in MySQL startup, so initial IOs by InnoDB use the default.
+### This is why I added get_server_state ibn buf_read_page in buf0rea.cc.
 
-I HAVE A BUG, TBC...
+org
+0
+0
+0
+
+explo
+1
+4
+4
+
+Values
 +-----------------------------------------------------+----------------+
 | VARIABLE_NAME                                       | VARIABLE_VALUE |
 +-----------------------------------------------------+----------------+
-| innodb_buffer_pool_read_sync_slow_io_threshold_usec | 0              |
+| innodb_buffer_pool_read_sync_slow_io_threshold_usec | 3600000000     |
 +-----------------------------------------------------+----------------+
 +-------------------------------------------------+----------------+
 | VARIABLE_NAME                                   | VARIABLE_VALUE |
 +-------------------------------------------------+----------------+
-| Innodb_buffer_pool_reads_sync_io_count          | 270            |
+| Innodb_buffer_pool_reads_sync_io_count          | 283            |
+| Innodb_buffer_pool_reads_sync_io_slow_count     | 0              |
+| Innodb_buffer_pool_reads_sync_io_slow_wait_usec | 0              |
+| Innodb_buffer_pool_reads_sync_io_wait_usec      | 3017215        |
++-------------------------------------------------+----------------+
++---------------------------------------+-----------+---------+---------+----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| NAME                                  | SUBSYSTEM | COUNT   | STATUS  | TYPE           | COMMENT                                                                                                                                                    |
++---------------------------------------+-----------+---------+---------+----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| buf_pool_reads_sync_io_count          | buffer    |     283 | enabled | status_counter | Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count) (sync reads exclude read ahead and read ahead ramdom)                     |
+| buf_pool_reads_sync_io_wait_usec      | buffer    | 3017215 | enabled | status_counter | Total wait time, in microseconds, for buf_pool_reads_sync_io_count (innodb_buffer_pool_reads_sync_io_wait_usec)                                            |
+| buf_pool_reads_sync_io_slow_count     | buffer    |       0 | enabled | status_counter | Number of sync reads directly from disk greater than or equal innodb_buffer_pool_read_slow_io_threshold_usec (innodb_buffer_pool_reads_sync_io_slow_count) |
+| buf_pool_reads_sync_io_slow_wait_usec | buffer    |       0 | enabled | status_counter | Total wait time, in microseconds, for buf_pool_reads_sync_io_slow_count (innodb_buffer_pool_reads_sync_io_slow_wait_usec)                                  |
++---------------------------------------+-----------+---------+---------+----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Set Persist
++-------------------------------------------------+----------------+
+| VARIABLE_NAME                                   | VARIABLE_VALUE |
++-------------------------------------------------+----------------+
+| Innodb_buffer_pool_reads_sync_io_count          | 276            |
 | Innodb_buffer_pool_reads_sync_io_slow_count     | 3              |
-| Innodb_buffer_pool_reads_sync_io_slow_wait_usec | 31965          |
-| Innodb_buffer_pool_reads_sync_io_wait_usec      | 2851248        |
+| Innodb_buffer_pool_reads_sync_io_slow_wait_usec | 31598          |
+| Innodb_buffer_pool_reads_sync_io_wait_usec      | 2920372        |
++-------------------------------------------------+----------------+
+
+In conf. File
++-------------------------------------------------+----------------+
+| VARIABLE_NAME                                   | VARIABLE_VALUE |
++-------------------------------------------------+----------------+
+| Innodb_buffer_pool_reads_sync_io_count          | 274            |
+| Innodb_buffer_pool_reads_sync_io_slow_count     | 274            |
+| Innodb_buffer_pool_reads_sync_io_slow_wait_usec | 2889765        |
+| Innodb_buffer_pool_reads_sync_io_wait_usec      | 2889765        |
++-------------------------------------------------+----------------+
+
+
+###################
+### Below with fix.
+
+Set Persist
++-------------------------------------------------+----------------+
+| VARIABLE_NAME                                   | VARIABLE_VALUE |
++-------------------------------------------------+----------------+
+| Innodb_buffer_pool_reads_sync_io_count          | 3              |
+| Innodb_buffer_pool_reads_sync_io_slow_count     | 3              |
+| Innodb_buffer_pool_reads_sync_io_slow_wait_usec | 32142          |
+| Innodb_buffer_pool_reads_sync_io_wait_usec      | 32142          |
++-------------------------------------------------+----------------+
+
+In conf. File
++-------------------------------------------------+----------------+
+| VARIABLE_NAME                                   | VARIABLE_VALUE |
++-------------------------------------------------+----------------+
+| Innodb_buffer_pool_reads_sync_io_count          | 4              |
+| Innodb_buffer_pool_reads_sync_io_slow_count     | 4              |
+| Innodb_buffer_pool_reads_sync_io_slow_wait_usec | 42548          |
+| Innodb_buffer_pool_reads_sync_io_wait_usec      | 42548          |
 +-------------------------------------------------+----------------+
 
 ...
+
 ```
 
 ...

@@ -42,6 +42,7 @@ this program; if not, write to the Free Software Foundation, Inc.,
 #include "fil0fil.h"
 #include "dict0dd.h"
 #include "current_thd.h"
+#include "mysqld.h"
 #include "ha_prototypes.h"
 #include "ibuf0ibuf.h"
 #include "log0recv.h"
@@ -296,11 +297,12 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
 
   srv_stats.buf_pool_reads.add(count);
 
-  if (count > 0
+  /* TODO JFG: explain get_server_state (for SET PERSIST)... */
+  if (get_server_state() == SERVER_OPERATING
+      && count > 0
       && current_thd
       && thd_to_innodb_session(current_thd)) {
     ulong usec = thd_to_innodb_session(current_thd)->last_io_wait_usec;
-    ut_ad(usec >= 0);
 
     /* In addition to the counter srv_stats.buf_pool_reads,
      *   we have buf_pool_reads_sync_io_count because buf_pool_reads
