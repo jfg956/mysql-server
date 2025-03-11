@@ -294,9 +294,11 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
 
   /* We do not know if buf_read_page_low will generate an IO.
    * With below assignment to 0, if the value is back as gt 0, there was an IO. */
+  /* TODO JFG: below might leak memory (thd_to_innodb_session allocates if null)... */
+  innodb_session_t *&innodb_session = *(innodb_session_t **)nullptr;
   if (current_thd
-      && thd_to_innodb_session(current_thd)) {
-    thd_to_innodb_session(current_thd)->last_io_wait_usec = 0;
+      && (innodb_session = thd_to_innodb_session(current_thd))) {
+    innodb_session->last_io_wait_usec = 0;
   }
 
   count = buf_read_page_low(&err, true, 0, BUF_READ_ANY_PAGE, page_id,
@@ -305,13 +307,11 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
   srv_stats.buf_pool_reads.add(count);
 
   /* TODO JFG: explain get_server_state (for SET PERSIST)... */
+  ulong usec = 0;
   if (get_server_state() == SERVER_OPERATING
       && count > 0
-      && current_thd
-      && thd_to_innodb_session(current_thd)
-      && thd_to_innodb_session(current_thd)->last_io_wait_usec > 0) {
-    ulong usec = thd_to_innodb_session(current_thd)->last_io_wait_usec;
-
+      && innodb_session
+      && (usec = innodb_session->last_io_wait_usec > 0)) {
     /* In addition to the counter srv_stats.buf_pool_reads,
      *   we have buf_pool_reads_sync_io_count because buf_pool_reads
      *   is incremented elsewhere (buf_read_ahead_random and buf_read_page_background) .*/
