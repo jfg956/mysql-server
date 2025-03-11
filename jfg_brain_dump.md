@@ -256,13 +256,11 @@ and `os_aio_func`:
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
-### Notes...
+### Tests...
 
 ...
 
 ```
-fs="$(echo storage/innobase/{buf/buf0rea.cc,handler/ha_innodb.cc,include/{sess0sess.h,srv0{mon,srv}.h},os/os0file.cc,srv/srv0{mon,srv}.cc})"
-
 ( cd ~/opt/mysql/mysql_9.2.0/bin
   test -e mysqld_org || cp mysqld{,_org}
   cp ~/src/mysql-server/worktrees/9.2.0_compile/build/default/bin/mysqld ./mysqld_compile
@@ -408,6 +406,25 @@ In conf. File
 
 ...
 
+##
+innodb_buffer_pool_load_at_startup
+
+...
+```
+
+...
+
+
+<!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
+
+### Notes...
+
+...
+
+```
+fs="$(echo storage/innobase/{buf/buf0rea.cc,handler/ha_innodb.cc,include/{sess0sess.h,srv0{mon,srv}.h},os/os0file.cc,srv/srv0{mon,srv}.cc})"
+
+...
 ```
 
 ...
