@@ -292,6 +292,13 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
   ulint count;
   dberr_t err;
 
+  /* We do not know if buf_read_page_low will generate an IO.
+   * With below assignment to 0, if the value is back as gt 0, there was an IO. */
+  if (current_thd
+      && thd_to_innodb_session(current_thd)) {
+    thd_to_innodb_session(current_thd)->last_io_wait_usec = 0;
+  }
+
   count = buf_read_page_low(&err, true, 0, BUF_READ_ANY_PAGE, page_id,
                             page_size, false);
 
@@ -301,7 +308,8 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
   if (get_server_state() == SERVER_OPERATING
       && count > 0
       && current_thd
-      && thd_to_innodb_session(current_thd)) {
+      && thd_to_innodb_session(current_thd)
+      && thd_to_innodb_session(current_thd)->last_io_wait_usec > 0) {
     ulong usec = thd_to_innodb_session(current_thd)->last_io_wait_usec;
 
     /* In addition to the counter srv_stats.buf_pool_reads,

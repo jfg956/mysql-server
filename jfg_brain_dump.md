@@ -406,8 +406,73 @@ In conf. File
 
 ...
 
-##
-innodb_buffer_pool_load_at_startup
+## ...
+
+echo "innodb_buffer_pool_load_at_startup = 0" >> my.sandbox.cnf
+
+./use <<< "
+   CREATE DATABASE test_jfg;
+   CREATE TABLE test_jfg.t (
+      id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY)"
+
+nb_rows=$((3*1024*1024*1024 / (16*1024) * 4))
+seq 1 $nb_rows |
+  awk '{print "(null)"}' |
+  tr " " "," | paste -s -d "$(printf ',%.0s' {1..100})\n" |
+  sed -e 's/.*/INSERT INTO t values &;/' |
+  ./use test_jfg | pv -t
+
+{ echo "ALTER TABLE t ADD COLUMN c0 CHAR(200) DEFAULT ''"
+         seq -f " ADD COLUMN c%.0f CHAR(240) DEFAULT ''" 1 15
+    } | paste -s -d "," | ./use test_jfg
+
+./use test_jfg <<< "ALTER TABLE t FORCE"      | pv -t
+./use test_jfg <<< "FLUSH TABLE t FOR EXPORT" | pv -t
+
+ls -lh data/test_jfg/t.ibd
+
+while sleep 0.1; do ./use -N test_jfg <<< "SET @i = ROUND(RAND() * $nb_rows); SELECT * from t where id = @i;"; done
+
+
+gss="$(echo {count,wait_usec,slow_count,slow_wait_usec})"
+vars3="$(for gs in $gss; do echo -n ",'buf_pool_reads_sync_io_$gs'"; done)"
+sql3="select COUNT from INNODB_METRICS where NAME in (${vars3:1});"
+while sleep 1; do
+ date
+ ./use -N information_schema <<< "$sql3"
+done |
+  stdbuf -oL paste -s -d "    \n" |
+  awk -W interactive '{
+    aa=$7-a; bb=$8-b; cc=$9-c; dd=$10-d;
+    a =$7;   b =$8;   c =$9;   d =$10;
+    NF=6; print $0, aa, bb, cc, dd, bb/aa}' | tail -n +2
+
+sql4="select COUNT_STAR, SUM_TIMER_WAIT/1000/1000 from file_summary_by_event_name where EVENT_NAME = 'wait/io/file/innodb/innodb_data_file'"
+while sleep 1; do
+  date
+  ./use -N performance_schema <<< "$sql4"
+done |
+  stdbuf -oL paste -s -d " \n" |
+  awk -W interactive '{
+    aa=$7-a; bb=$8-b;
+    a =$7;   b =$8;
+    NF=6; print $0, aa, bb, bb/aa}' | tail -n +2
+
+
+# I am doing tests on hdd...
+./use <<< "set global innodb_buffer_pool_read_sync_slow_io_threshold_usec = 20000"
+
+sudo bash -c "echo 3 > /proc/sys/vm/drop_caches"
+pv -etbr data/test_jfg/t.ibd > /dev/null
+
+# Unable to simulate fast IOs in 9.2.0 with ibd file in the Linux Page Cache.
+# Same in 8.4.4.
+# I am able with 8.0.41...  WTF !
+
+./use <<< "set global innodb_buffer_pool_read_sync_slow_io_threshold_usec = 11000"
+
+Tue Mar 11 20:54:04 UTC 2025 15 158194 1 11041 10546.3
+Tue Mar 11 20:54:05 UTC 2025 16 169576 1 11126 10598.5
 
 ...
 ```
