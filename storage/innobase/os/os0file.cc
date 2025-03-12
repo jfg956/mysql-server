@@ -6806,6 +6806,8 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
 
   auto start = std::chrono::steady_clock::now();
 
+  dberr_t ret;
+
   if (aio_mode == AIO_mode::SYNC) {
     /* This is actually an ordinary synchronous read or write:
     no need to use an i/o-handler thread. NOTE that if we use
@@ -6818,28 +6820,16 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     Performance Schema instrumented os_file_read() and
     os_file_write(). Instead, we should use os_file_read_func()
     and os_file_write_func() */
-    dberr_t ret;
     if (type.is_read()) {
       ret = (os_file_read_func(type, name, file.m_file, buf, offset, n));
     } else {
       ut_ad(type.is_write());
       ret = (os_file_write_func(type, name, file.m_file, buf, offset, n));
     }
-
-    /* I / JFG am guessing that we can end-up here with one of these being null, so let's be safe. */
-    /* Would be better to avoid duplication of code with below, but this function design
-     *   (early return here) makes this harder than duplicating the code. */
-    /* TODO JFG: below might leak memory (thd_to_innodb_session allocates if null)... */
-    innodb_session_t *&innodb_session = *(innodb_session_t **)nullptr;
-    if (current_thd && (innodb_session = thd_to_innodb_session(current_thd))) {
-      auto end = std::chrono::steady_clock::now();
-      ulong time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-      innodb_session->last_io_wait_usec = time_us;
-    }
-
-    return ret;
-  }
-
+  } else {
+      /* This block is poorly indented to make the diff easier to understand.
+       * It can be reformatted when merging, maybe in a different merge commit.
+       * I left this comment for clarity of the patch, it can be removed when merging. */
   const auto array = AIO::select_slot_array(type, read_only, aio_mode);
   bool io_dispatched = false;
   while (!io_dispatched) {
@@ -6932,19 +6922,20 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     }
   }
 
+    /* AIO request was dispatched successfully! */
+    ret = DB_SUCCESS;
+  } /* End poorly indented block. */
+
   /* I / JFG am guessing that we can end-up here with one of these being null, so let's be safe. */
-  /* Would be better to avoid duplication of code with above, but this function design
-   *   (early return above) makes this harder than duplicating the code. */
-  /* TODO JFG: below might leak memory (thd_to_innodb_session allocates if null)... */
-  innodb_session_t *&innodb_session = *(innodb_session_t **)nullptr;
-  if (current_thd && (innodb_session = thd_to_innodb_session(current_thd))) {
+  innodb_session_t *innodb_session_tmp = nullptr;
+  innodb_session_t *&innodb_session = innodb_session_tmp;
+  if (current_thd && (innodb_session = thd_to_innodb_session_null(current_thd))) {
     auto end = std::chrono::steady_clock::now();
-    ulong time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    auto time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     innodb_session->last_io_wait_usec = time_us;
   }
 
-  /* AIO request was dispatched successfully! */
-  return (DB_SUCCESS);
+  return ret;
 }
 
 /** Simulated AIO handler for reaping IO requests */

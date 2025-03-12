@@ -2019,8 +2019,8 @@ const char *thd_innodb_tmpdir(THD *thd) {
 /** Obtain the private handler of InnoDB session specific data.
 @param[in,out]  thd     MySQL thread handler.
 @return reference to private handler */
-
 [[nodiscard]] innodb_session_t *&thd_to_innodb_session(THD *thd) {
+  // TODO JFG: code below is duplicated in thd_to_innodb_session_null...
   innodb_session_t *&innodb_session =
       *(innodb_session_t **)thd_ha_data(thd, innodb_hton_ptr);
 
@@ -2030,6 +2030,14 @@ const char *thd_innodb_tmpdir(THD *thd) {
 
   innodb_session = ut::new_withkey<innodb_session_t>(UT_NEW_THIS_FILE_PSI_KEY);
   return (innodb_session);
+}
+
+/** Same as thd_to_innodb_session, but returns null if the handler does not exist.
+@param[in,out]  thd     MySQL thread handler.
+@return reference to private handler */
+[[nodiscard]] innodb_session_t *&thd_to_innodb_session_null(THD *thd) {
+  // TODO JFG: code below is duplicated from thd_to_innodb_session...
+  return *(innodb_session_t **)thd_ha_data(thd, innodb_hton_ptr);
 }
 
 /** Obtain the InnoDB transaction of a MySQL thread.
