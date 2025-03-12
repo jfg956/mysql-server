@@ -263,8 +263,8 @@ and `os_aio_func`:
 ```
 ( cd ~/opt/mysql/mysql_9.2.0/bin
   test -e mysqld_org || cp mysqld{,_org}
-  cp ~/src/mysql-server/worktrees/9.2.0_compile/build/default/bin/mysqld ./mysqld_compile
-  cp ~/src/mysql-server/worktrees/9.2.0_explo_innodb_read_tail_latencies/build/default/bin/mysqld ./mysqld_explo
+  rsync -a ~/src/mysql-server/worktrees/9.2.0_compile/build/default/bin/mysqld ./mysqld_compile
+  rsync -a ~/src/mysql-server/worktrees/9.2.0_explo_innodb_read_tail_latencies/build/default/bin/mysqld ./mysqld_explo
   ls -l mysqld_*; )
 
 dbdeployer deploy single mysql_9.2.0
@@ -280,6 +280,7 @@ function set_bin() {
     cd ~/opt/mysql/mysql_$mv/bin
     rm -f mysqld
     ln -s mysqld_$1 mysqld
+    ls -l mysqld
   )
 }
 
@@ -351,14 +352,7 @@ Values
 | Innodb_buffer_pool_reads_sync_io_slow_wait_usec | 0              |
 | Innodb_buffer_pool_reads_sync_io_wait_usec      | 3017215        |
 +-------------------------------------------------+----------------+
-+---------------------------------------+-----------+---------+---------+----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| NAME                                  | SUBSYSTEM | COUNT   | STATUS  | TYPE           | COMMENT                                                                                                                                                    |
-+---------------------------------------+-----------+---------+---------+----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| buf_pool_reads_sync_io_count          | buffer    |     283 | enabled | status_counter | Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count) (sync reads exclude read ahead and read ahead ramdom)                     |
-| buf_pool_reads_sync_io_wait_usec      | buffer    | 3017215 | enabled | status_counter | Total wait time, in microseconds, for buf_pool_reads_sync_io_count (innodb_buffer_pool_reads_sync_io_wait_usec)                                            |
-| buf_pool_reads_sync_io_slow_count     | buffer    |       0 | enabled | status_counter | Number of sync reads directly from disk greater than or equal innodb_buffer_pool_read_slow_io_threshold_usec (innodb_buffer_pool_reads_sync_io_slow_count) |
-| buf_pool_reads_sync_io_slow_wait_usec | buffer    |       0 | enabled | status_counter | Total wait time, in microseconds, for buf_pool_reads_sync_io_slow_count (innodb_buffer_pool_reads_sync_io_slow_wait_usec)                                  |
-+---------------------------------------+-----------+---------+---------+----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
+[...]
 
 Set Persist
 +-------------------------------------------------+----------------+
@@ -410,50 +404,61 @@ In conf. File
 
 echo "innodb_buffer_pool_load_at_startup = 0" >> my.sandbox.cnf
 
-./use <<< "
-   CREATE DATABASE test_jfg;
-   CREATE TABLE test_jfg.t (
-      id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY)"
-
 nb_rows=$((3*1024*1024*1024 / (16*1024) * 4))
-seq 1 $nb_rows |
-  awk '{print "(null)"}' |
-  tr " " "," | paste -s -d "$(printf ',%.0s' {1..100})\n" |
-  sed -e 's/.*/INSERT INTO t values &;/' |
-  ./use test_jfg | pv -t
 
-{ echo "ALTER TABLE t ADD COLUMN c0 CHAR(200) DEFAULT ''"
-         seq -f " ADD COLUMN c%.0f CHAR(240) DEFAULT ''" 1 15
-    } | paste -s -d "," | ./use test_jfg
+{
+  ./use <<< "
+     CREATE DATABASE test_jfg;
+     CREATE TABLE test_jfg.t (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY)"
 
-./use test_jfg <<< "ALTER TABLE t FORCE"      | pv -t
-./use test_jfg <<< "FLUSH TABLE t FOR EXPORT" | pv -t
+ seq 1 $nb_rows |
+    awk '{print "(null)"}' |
+    tr " " "," | paste -s -d "$(printf ',%.0s' {1..100})\n" |
+    sed -e 's/.*/INSERT INTO t values &;/' |
+    ./use test_jfg | pv -t
 
-ls -lh data/test_jfg/t.ibd
+  { echo "ALTER TABLE t ADD COLUMN c0 CHAR(200) DEFAULT ''"
+           seq -f " ADD COLUMN c%.0f CHAR(240) DEFAULT ''" 1 15
+  } | paste -s -d "," | ./use test_jfg
+
+  ./use test_jfg <<< "ALTER TABLE t FORCE"      | pv -t
+  ./use test_jfg <<< "FLUSH TABLE t FOR EXPORT" | pv -t
+
+  ls -lh data/test_jfg/t.ibd
+}
+
+# Below, result from above with gp3 and 8.0.41.
+0:00:39
+0:03:06
+0:00:00
+-rw-r----- 1 jgagne jgagne 4.7G Mar 12 15:07 data/test_jfg/t.ibd
+
+# Below, result from above with magnetic and 9.2.0.
+0:03:20
+0:26:24
+0:00:00
+-rw-r----- 1 jgagne jgagne 4.7G Mar 12 16:13 data/test_jfg/t.ibd
+
+
 
 while sleep 0.1; do ./use -N test_jfg <<< "SET @i = ROUND(RAND() * $nb_rows); SELECT * from t where id = @i;"; done
 
 
+# My stuff...
 gss="$(echo {count,wait_usec,slow_count,slow_wait_usec})"
 vars3="$(for gs in $gss; do echo -n ",'buf_pool_reads_sync_io_$gs'"; done)"
 sql3="select COUNT from INNODB_METRICS where NAME in (${vars3:1});"
-while sleep 1; do
- date
- ./use -N information_schema <<< "$sql3"
-done |
-  stdbuf -oL paste -s -d "    \n" |
-  awk -W interactive '{
+while sleep 1; do date; ./use -N information_schema <<< "$sql3"; done |
+  stdbuf -oL paste -s -d "    \n" | awk -W interactive '{
     aa=$7-a; bb=$8-b; cc=$9-c; dd=$10-d;
     a =$7;   b =$8;   c =$9;   d =$10;
     NF=6; print $0, aa, bb, cc, dd, bb/aa}' | tail -n +2
 
-sql4="select COUNT_STAR, SUM_TIMER_WAIT/1000/1000 from file_summary_by_event_name where EVENT_NAME = 'wait/io/file/innodb/innodb_data_file'"
-while sleep 1; do
-  date
-  ./use -N performance_schema <<< "$sql4"
-done |
-  stdbuf -oL paste -s -d " \n" |
-  awk -W interactive '{
+# PS...
+sql4="select COUNT_STAR, SUM_TIMER_WAIT/1000/1000"
+sql4="$sql4 from file_summary_by_event_name where EVENT_NAME = 'wait/io/file/innodb/innodb_data_file'"
+while sleep 1; do date; ./use -N performance_schema <<< "$sql4"; done |
+  stdbuf -oL paste -s -d " \n" | awk -W interactive '{
     aa=$7-a; bb=$8-b;
     a =$7;   b =$8;
     NF=6; print $0, aa, bb, bb/aa}' | tail -n +2
@@ -487,7 +492,7 @@ Tue Mar 11 20:54:05 UTC 2025 16 169576 1 11126 10598.5
 ...
 
 ```
-fs="$(echo storage/innobase/{buf/buf0rea.cc,handler/ha_innodb.cc,include/{sess0sess.h,srv0{mon,srv}.h},os/os0file.cc,srv/srv0{mon,srv}.cc})"
+fs="$(echo storage/innobase/{include/{dict0dd,sess0sess,srv0{mon,srv}}.h,{buf/buf0rea,handler/ha_innodb,os/os0file,srv/srv0{mon,srv}}.cc})"
 
 ...
 ```
