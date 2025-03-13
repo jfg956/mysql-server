@@ -1,6 +1,9 @@
 
 <!-- 6789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 -->
 
+(If you arew reviewing the matching PR, feel free to skip this file, it contains
+the note I took while doing this work)
+
 I would like to implement InnoDB Read IO Tail Latency Monitoring.
 
 When running MySQL on AWS EBS, GCP PV, or other complex network block device
@@ -8,12 +11,11 @@ back-end, MySQL performance can degrade if there are increased tail latencies on
 read IOs because of an impaired network block device.  In an HA environment, such
 degraded instance should quickly be replaced (failover to a replica if impaired
 primary, and stop sending reads to it if impaired replica).  However, detecting
-such impaired MySQL is not easy.  I want to make this easier by adding "InnoDB
-Read IO Tail Latency Monitoring" to MySQL.
+such degraded MySQL is not easy.  I want to make this easier by adding.
 
 The idea is to add a threshold (global variable) and all Read IOs longer than it
-(suggested name `innodb_io_read_slow_threshold`) would increment a counter.
-This counter could be a global status or an InnoDB Metric.
+would increment a counter.  This counter could be a global status and/or
+an InnoDB Metric.
 
 - https://dev.mysql.com/doc/refman/9.0/en/server-status-variables.html
 
@@ -25,8 +27,10 @@ TBC: discussion about my implementation:
 - ugly carrying info to `buf_read_page` from `os_aio_func` via `innodb_session_t`...
 - always timing `os_aio_func`, overhead should be small compared to doing an IO...
 - counters in buf instead of os, but could be convinced otherwise...
-- SET PERSIST weirdness...
 - ...
+
+TBC: check that the patch is not impacting performance significantly
+- would have been easier wo https://bugs.mysql.com/bug.php?id=117691
 
 TBC: add test...
 - ...
@@ -71,7 +75,7 @@ Other interesting InnoDB Metrics (because ms):
 
 ### Code Notes
 
-### InnoDB Global Statuses and Metrics
+#### InnoDB Global Statuses and Metrics
 
 `Innodb_buffer_pool_pages_flushed` status is defined / declared / exported / passed here (convoluted, see below):
 - All InnoDB Status defined (extern struct): https://github.com/jfg956/mysql-server/blob/mysql-9.0.1/storage/innobase/include/srv0srv.h#L781
@@ -262,22 +266,25 @@ and `os_aio_func`:
 
 ```
 ( cd ~/opt/mysql/mysql_9.2.0/bin
-  test -e mysqld_org || cp mysqld{,_org}
+  test -e mysqld_org || { mv mysqld{,_org}; ln -s mysqld{_org,}; }
   rsync -a ~/src/mysql-server/worktrees/9.2.0_compile/build/default/bin/mysqld ./mysqld_compile
   rsync -a ~/src/mysql-server/worktrees/9.2.0_explo_innodb_read_tail_latencies/build/default/bin/mysqld ./mysqld_explo
   ls -l mysqld_*; )
 
 dbdeployer deploy single mysql_9.2.0
 
-mv=9.2.0
 function set_bin() {
-  test -e ~/opt/mysql/mysql_$mv/bin/mysqld_$1 || {
-    echo "File not found: ~/opt/mysql/mysql_$mv/bin/mysqld_$1"
-    return 1
-  }
-
   ( # In a sub-shell to not have to undo cd.
-    cd ~/opt/mysql/mysql_$mv/bin
+    cd ~/opt/mysql/mysql_9.2.0/bin
+
+    test -e mysqld_$1 || {
+      echo "File not found: mysqld_$1 !"
+      return 1; }
+
+    test -e mysqld && { test -L mysqld || {
+      echo "mysqld not a symlink, aborting !"
+      return 2; }; }
+
     rm -f mysqld
     ln -s mysqld_$1 mysqld
     ls -l mysqld
@@ -323,10 +330,10 @@ echo "$gv = 0" >> my.sandbox.cnf
 sed -i -e "/$gv/d" my.sandbox.cnf
 }
 
-#######################################
-### There is a weird behavior in below.
-### The SET PERSIST becomes active late in MySQL startup, so initial IOs by InnoDB use the default.
-### This is why I added get_server_state ibn buf_read_page in buf0rea.cc.
+#####################################
+# There is a weird behavior in below.
+# The SET PERSIST becomes active late in MySQL startup, so initial IOs by InnoDB use the default.
+# This is why I added get_server_state in buf_read_page in buf0rea.cc.
 
 org
 0
@@ -374,8 +381,6 @@ In conf. File
 | Innodb_buffer_pool_reads_sync_io_wait_usec      | 2889765        |
 +-------------------------------------------------+----------------+
 
-
-###################
 ### Below with fix.
 
 Set Persist
@@ -400,9 +405,8 @@ In conf. File
 
 ...
 
-## ...
-
-echo "innodb_buffer_pool_load_at_startup = 0" >> my.sandbox.cnf
+################
+# Feature tests.
 
 nb_rows=$((3*1024*1024*1024 / (16*1024) * 4))
 
@@ -411,7 +415,7 @@ nb_rows=$((3*1024*1024*1024 / (16*1024) * 4))
      CREATE DATABASE test_jfg;
      CREATE TABLE test_jfg.t (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY)"
 
- seq 1 $nb_rows |
+  seq 1 $nb_rows |
     awk '{print "(null)"}' |
     tr " " "," | paste -s -d "$(printf ',%.0s' {1..100})\n" |
     sed -e 's/.*/INSERT INTO t values &;/' |
@@ -440,8 +444,7 @@ nb_rows=$((3*1024*1024*1024 / (16*1024) * 4))
 -rw-r----- 1 jgagne jgagne 4.7G Mar 12 16:13 data/test_jfg/t.ibd
 
 
-
-while sleep 0.1; do ./use -N test_jfg <<< "SET @i = ROUND(RAND() * $nb_rows); SELECT * from t where id = @i;"; done
+test "$nb_rows" == "" || while sleep 0.1; do ./use -N test_jfg <<< "SET @i = ROUND(RAND() * $nb_rows); SELECT * from t where id = @i;"; done
 
 
 # My stuff...
@@ -473,11 +476,20 @@ pv -etbr data/test_jfg/t.ibd > /dev/null
 # Unable to simulate fast IOs in 9.2.0 with ibd file in the Linux Page Cache.
 # Same in 8.4.4.
 # I am able with 8.0.41...  WTF !
+# --> https://bugs.mysql.com/bug.php?id=117691
 
 ./use <<< "set global innodb_buffer_pool_read_sync_slow_io_threshold_usec = 11000"
 
 Tue Mar 11 20:54:04 UTC 2025 15 158194 1 11041 10546.3
 Tue Mar 11 20:54:05 UTC 2025 16 169576 1 11126 10598.5
+
+Thu Mar 13 18:34:20 UTC 2025 14 149606 0 0 10686.1
+Thu Mar 13 18:34:21 UTC 2025 12 132351 1 15581 11029.2
+Thu Mar 13 18:34:22 UTC 2025 12 126528 0 0 10544
+
+Thu Mar 13 19:17:29 UTC 2025 13 137963 3 33353 10612.5
+Thu Mar 13 19:17:30 UTC 2025 14 148061 1 11094 10575.8
+Thu Mar 13 19:17:31 UTC 2025 11 116507 0 0 10591.5
 
 ...
 ```

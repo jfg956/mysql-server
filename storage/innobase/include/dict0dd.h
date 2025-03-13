@@ -1313,7 +1313,7 @@ bool dd_drop_tablespace(dd::cache::Dictionary_client *dd_client,
 @return reference to private handler */
 [[nodiscard]] innodb_session_t *&thd_to_innodb_session(THD *thd);
 
-/** Same as thd_to_innodb_session, but returns null if the handler does not exist.
+/** Same as thd_to_innodb_session, but returns null if the handler does not exist (without allocating memory).
 @param[in,out]  thd     MySQL thread handler.
 @return reference to private handler */
 [[nodiscard]] innodb_session_t *&thd_to_innodb_session_null(THD *thd);

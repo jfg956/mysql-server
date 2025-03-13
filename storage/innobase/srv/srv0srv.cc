@@ -1619,10 +1619,10 @@ void srv_export_innodb_status(void) {
 
   export_vars.innodb_buffer_pool_reads = srv_stats.buf_pool_reads;
 
-  export_vars.innodb_buffer_pool_reads_sync_io_count         = srv_stats.buf_pool_reads_sync_io_count;
-  export_vars.innodb_buffer_pool_reads_sync_io_wait_usec     = srv_stats.buf_pool_reads_sync_io_wait_usec;
-  export_vars.innodb_buffer_pool_reads_sync_io_slow_count    = srv_stats.buf_pool_reads_sync_io_slow_count;
-  export_vars.innodb_buffer_pool_reads_sync_io_slow_wait_use = srv_stats.buf_pool_reads_sync_io_slow_wait_usec;
+  export_vars.buf_pool_reads_sync_io_count          = srv_stats.buf_pool_reads_sync_io_count;
+  export_vars.buf_pool_reads_sync_io_wait_usec      = srv_stats.buf_pool_reads_sync_io_wait_usec;
+  export_vars.buf_pool_reads_sync_io_slow_count     = srv_stats.buf_pool_reads_sync_io_slow_count;
+  export_vars.buf_pool_reads_sync_io_slow_wait_usec = srv_stats.buf_pool_reads_sync_io_slow_wait_usec;
 
   export_vars.innodb_buffer_pool_read_ahead_rnd = stat.n_ra_pages_read_rnd;
 

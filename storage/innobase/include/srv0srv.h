@@ -1165,11 +1165,14 @@ struct export_var_t {
   ulint innodb_buffer_pool_reads;          /*!< srv_buf_pool_reads */
   /* To me / JFG, it looks like above "srv_buf_pool_reads" should be "srv_stats.buf_pool_reads",
    *   but I might be missing something (or I am right and above is a relic of a refactor).
-   * If I am wrong, below four comments need to be adjusted. */
-  ulint innodb_buffer_pool_reads_sync_io_count;          /*!< srv_stats.buf_pool_reads_sync_io_count */
-  ulint innodb_buffer_pool_reads_sync_io_wait_usec;      /*!< srv_stats.buf_pool_reads_sync_io_wait_usec */
-  ulint innodb_buffer_pool_reads_sync_io_slow_count;     /*!< srv_stats.buf_pool_reads_sync_io_slow_count */
-  ulint innodb_buffer_pool_reads_sync_io_slow_wait_use;  /*!< srv_stats.buf_pool_reads_sync_io_slow_wait_usec */
+   * If I am wrong, below four comments need to be adjusted.
+   * Also, I do not like these variable names, so I am suggesting something
+   *   I like better, if this is unwelcomed, feel free to adjust when merging
+   *   (or asking me to fix the patch) */
+  ulint buf_pool_reads_sync_io_count;           /*!< srv_stats.buf_pool_reads_sync_io_count */
+  ulint buf_pool_reads_sync_io_wait_usec;       /*!< srv_stats.buf_pool_reads_sync_io_wait_usec */
+  ulint buf_pool_reads_sync_io_slow_count;      /*!< srv_stats.buf_pool_reads_sync_io_slow_count */
+  ulint buf_pool_reads_sync_io_slow_wait_usec;  /*!< srv_stats.buf_pool_reads_sync_io_slow_wait_usec */
   ulint innodb_buffer_pool_wait_free;      /*!< srv_buf_pool_wait_free */
   ulint innodb_buffer_pool_pages_flushed;  /*!< srv_buf_pool_flushed */
   ulint innodb_buffer_pool_write_requests; /*!< srv_buf_pool_write_requests */

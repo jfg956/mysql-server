@@ -291,13 +291,14 @@ read_ahead:
 bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
   ulint count;
   dberr_t err;
-
-  /* We do not know if buf_read_page_low will generate an IO.
-   * With below assignment to 0, if the value is back as gt 0, there was an IO. */
   innodb_session_t *innodb_session_tmp = nullptr;
   innodb_session_t *&innodb_session = innodb_session_tmp;
-  if (current_thd
-      && (innodb_session = thd_to_innodb_session_null(current_thd))) {
+
+  /* We do not know for sure if buf_read_page_low will generate an IO.
+   * With below assignment to 0, if the value is back as greater than 0, then there was an IO. */
+  /* I / JFG am guessing that we can end-up here with current_thd or innodb_session being null, so let's be safe. */
+  if (current_thd && (innodb_session = thd_to_innodb_session_null(current_thd))) {
+    innodb_session->needs_last_io_wait_usec = true;
     innodb_session->last_io_wait_usec = 0;
   }
 
@@ -306,22 +307,31 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
 
   srv_stats.buf_pool_reads.add(count);
 
-  /* TODO JFG: explain get_server_state (for SET PERSIST)... */
-  ulong usec = 0;
-  if (get_server_state() == SERVER_OPERATING
-      && count > 0
-      && innodb_session
-      && (usec = innodb_session->last_io_wait_usec) > 0) {
-    /* In addition to the counter srv_stats.buf_pool_reads,
-     *   we have buf_pool_reads_sync_io_count because buf_pool_reads
-     *   is incremented elsewhere (buf_read_ahead_random and buf_read_page_background) .*/
-    srv_stats.buf_pool_reads_sync_io_count.add(count);
-    srv_stats.buf_pool_reads_sync_io_wait_usec.add(usec);
+  if (innodb_session) {
+    ulong usec = innodb_session->last_io_wait_usec;  /* This needs to be above below for obvious reasons. */
 
-    /* The cast below is safe, because we know it is gt -1 as of if above. */
-    if (usec >= srv_buffer_pool_read_sync_slow_io_threshold_usec) {
-      srv_stats.buf_pool_reads_sync_io_slow_count.add(count);
-      srv_stats.buf_pool_reads_sync_io_slow_wait_usec.add(usec);
+    innodb_session->needs_last_io_wait_usec = false;
+    innodb_session->last_io_wait_usec = 0;  /* To make sure a value in here do not confuse someone later. */
+
+    /* We need the test to SERVER_OPERATING because of a convoluted reason.
+    * If the threshold is set with SET PERSIST, the setting of the variable will
+    *   happen after InnoDB initialization.  This means that all IOs happening
+    *   before will use the value from the conf file or the default.  This can
+    *   be confusing for the user, so excluding IOs done before SERVER_OPERATING.
+    * Obviously, this late setting by SET PERSIST could be considered a bug,
+    *   but I / JFG did not yet find a good way to report this. */
+    /* Reminder: there was an io only if usec > 0. */
+    if (get_server_state() == SERVER_OPERATING && usec > 0) {
+      /* We need a counter in addition to srv_stats.buf_pool_reads
+       *   because buf_pool_reads is incremented elsewhere
+       *   (buf_read_ahead_random and buf_read_page_background) .*/
+      srv_stats.buf_pool_reads_sync_io_count.add(count);
+      srv_stats.buf_pool_reads_sync_io_wait_usec.add(usec);
+
+      if (usec >= srv_buffer_pool_read_sync_slow_io_threshold_usec) {
+        srv_stats.buf_pool_reads_sync_io_slow_count.add(count);
+        srv_stats.buf_pool_reads_sync_io_slow_wait_usec.add(usec);
+      }
     }
   }
 

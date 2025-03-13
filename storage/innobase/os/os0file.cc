@@ -6804,9 +6804,18 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
   ut_ad((n & 0xFFFFFFFFUL) == n);
 #endif /* _WIN32 */
 
-  auto start = std::chrono::steady_clock::now();
-
   dberr_t ret;
+  bool needs_last_io_wait_usec = false;  /* If not needed, do not call std::chrono::steady_clock::now(). */
+  std::chrono::steady_clock::time_point start;
+
+  innodb_session_t *innodb_session_tmp = nullptr;
+  innodb_session_t *&innodb_session = innodb_session_tmp;
+  /* I / JFG am guessing that we can end-up here with current_thd or innodb_session being null, so let's be safe. */
+  if (current_thd
+      && (innodb_session = thd_to_innodb_session_null(current_thd))
+      && (needs_last_io_wait_usec = innodb_session->needs_last_io_wait_usec)) {
+    start = std::chrono::steady_clock::now();
+  }
 
   if (aio_mode == AIO_mode::SYNC) {
     /* This is actually an ordinary synchronous read or write:
@@ -6820,16 +6829,16 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     Performance Schema instrumented os_file_read() and
     os_file_write(). Instead, we should use os_file_read_func()
     and os_file_write_func() */
+    ut_ad(type.is_read() || type.is_write());
     if (type.is_read()) {
-      ret = (os_file_read_func(type, name, file.m_file, buf, offset, n));
+      ret = os_file_read_func(type, name, file.m_file, buf, offset, n);
     } else {
-      ut_ad(type.is_write());
-      ret = (os_file_write_func(type, name, file.m_file, buf, offset, n));
+      ret = os_file_write_func(type, name, file.m_file, buf, offset, n);
     }
   } else {
-      /* This block is poorly indented to make the diff easier to understand.
-       * It can be reformatted when merging, maybe in a different merge commit.
-       * I left this comment for clarity of the patch, it can be removed when merging. */
+    /* This block is poorly indented to make the diff easier to understand.
+     * It can be reformatted when merging, maybe in a different merge commit.
+     * I left this comment for clarity of the patch, it can be removed when merging. */
   const auto array = AIO::select_slot_array(type, read_only, aio_mode);
   bool io_dispatched = false;
   while (!io_dispatched) {
@@ -6920,16 +6929,13 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
         return DB_IO_ERROR;
       }
     }
-  }
+  } /* End of poorly indented block. */
 
     /* AIO request was dispatched successfully! */
     ret = DB_SUCCESS;
-  } /* End poorly indented block. */
+  }
 
-  /* I / JFG am guessing that we can end-up here with one of these being null, so let's be safe. */
-  innodb_session_t *innodb_session_tmp = nullptr;
-  innodb_session_t *&innodb_session = innodb_session_tmp;
-  if (current_thd && (innodb_session = thd_to_innodb_session_null(current_thd))) {
+  if (needs_last_io_wait_usec) {
     auto end = std::chrono::steady_clock::now();
     auto time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     innodb_session->last_io_wait_usec = time_us;

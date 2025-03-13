@@ -1178,18 +1178,31 @@ static SHOW_VAR innodb_status_variables[] = {
      SHOW_SCOPE_GLOBAL},
     {"buffer_pool_reads", (char *)&export_vars.innodb_buffer_pool_reads,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    /* Note JFG:
+     * We could consider not exposing the next four counters as Global Statuses
+     *   and only expose them as InnoDB Metrics.
+     * IMHO, having both statuses and metrics is complexity that we should fight,
+     *   but out of scope of my work.
+     * If I would have a saying on the subject, I think InnoDB Global Statuses should be
+     *   deprecated in favor of InnoDB Metrics (this might need adding metrics which do
+     *   not have statuses, and at the same time, deprecating other metric interfaces
+     *   like I_S.INNODB_CMP).
+     * Not exposing the four counters below could nudge people in using the
+     *   good interface, not the deprecated one, hence considering not adding four below.
+     * But this should NOT be OpenTelemetry only, because I want my patch to be in MySQL Community. */
     {"buffer_pool_reads_sync_io_count",
-     (char *)&export_vars.innodb_buffer_pool_reads_sync_io_count,
+     (char *)&export_vars.buf_pool_reads_sync_io_count,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
     {"buffer_pool_reads_sync_io_wait_usec",
-     (char *)&export_vars.innodb_buffer_pool_reads_sync_io_wait_usec,
+     (char *)&export_vars.buf_pool_reads_sync_io_wait_usec,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
     {"buffer_pool_reads_sync_io_slow_count",
-     (char *)&export_vars.innodb_buffer_pool_reads_sync_io_slow_count,
+     (char *)&export_vars.buf_pool_reads_sync_io_slow_count,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
     {"buffer_pool_reads_sync_io_slow_wait_usec",
-     (char *)&export_vars.innodb_buffer_pool_reads_sync_io_slow_wait_use,
+     (char *)&export_vars.buf_pool_reads_sync_io_slow_wait_usec,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    /* End note JFG, see above for details. */
     {"buffer_pool_wait_free", (char *)&export_vars.innodb_buffer_pool_wait_free,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
     {"buffer_pool_write_requests",
@@ -5383,7 +5396,12 @@ static PSI_metric_info_v1 buffer_metrics[] = {
     /* I / JFG do not fully fully understand this,
      *   so I am blindly copying from above (innodb_buffer_pool_reads).
      * I am guessing this is related to OpenTelemetry,
-     *   and I opened a bug about this: https://bugs.mysql.com/bug.php?id=117659. */
+     *   and I opened a bug about this: https://bugs.mysql.com/bug.php?id=117659.
+     * If it is indeed related to OpenTelemetry, I cannot test this
+     *   because it is an Enterprise feature, which I not have a license to use.
+     * I also think that this implementation is duplicating a lot of code.
+     *   I wished this array was initialized at runtime from the InnoDB Metric
+     *   array. */
     // TODO JFG: before submitting the patch, make sure comments in below match srv0mon.cc.
     simple("reads_sync_io_count",
      "",
@@ -5391,13 +5409,13 @@ static PSI_metric_info_v1 buffer_metrics[] = {
      "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
      "(sync reads exclude read ahead and read ahead ramdom)",
      MetricOTELType::ASYNC_COUNTER,
-     export_vars.innodb_buffer_pool_reads_sync_io_count),
+     export_vars.buf_pool_reads_sync_io_count),
     simple("reads_sync_io_wait_usec",
      "",
      "Total wait time, in microseconds, for buf_pool_reads_sync_io_count "
      "(innodb_buffer_pool_reads_sync_io_wait_usec)",
      MetricOTELType::ASYNC_COUNTER,
-     export_vars.innodb_buffer_pool_reads_sync_io_wait_usec),
+     export_vars.buf_pool_reads_sync_io_wait_usec),
     simple("reads_sync_io_slow_count",
      "",
      "Number of sync reads directly from disk greater than innodb_buffer_pool_read_slow_io_threshold_usec"
@@ -5405,13 +5423,13 @@ static PSI_metric_info_v1 buffer_metrics[] = {
      "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
      "(sync reads exclude read ahead and read ahead ramdom)",
      MetricOTELType::ASYNC_COUNTER,
-     export_vars.innodb_buffer_pool_reads_sync_io_slow_count),
+     export_vars.buf_pool_reads_sync_io_slow_count),
     simple("reads_sync_io_slow_wait_use",
      "",
      "Total wait time, in microseconds, for buf_pool_reads_sync_io_slow_count "
      "(innodb_buffer_pool_reads_sync_io_slow_wait_usec)",
      MetricOTELType::ASYNC_COUNTER,
-     export_vars.innodb_buffer_pool_reads_sync_io_slow_wait_use),
+     export_vars.buf_pool_reads_sync_io_slow_wait_usec),
 
     simple("wait_free",
      "",
