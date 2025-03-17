@@ -48,10 +48,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 #include "my_dbug.h"
 #include "my_io.h"
 
-#include "fil0fil.h"        /* I / JFG do not understand the duplicate include with above, maybe should be removed, but out of scope of my patch. */
-#include "ha_prototypes.h"  /* I / JFG do not understand the duplicate include with above, maybe should be removed, but out of scope of my patch. */
+#include "fil0fil.h"        /* I / JFG do not understand this duplicate include with above, maybe should be removed, but out of scope of my patch. */
+#include "ha_prototypes.h"  /* I / JFG do not understand this duplicate include with above, maybe should be removed, but out of scope of my patch. */
 #include "my_macros.h"
-#include "os0file.h"        /* I / JFG do not understand the duplicate include with above, maybe should be removed, but out of scope of my patch. */
+#include "os0file.h"        /* I / JFG do not understand this duplicate include with above, maybe should be removed, but out of scope of my patch. */
 #include "sql_const.h"
 #include "srv0srv.h"
 #include "srv0start.h"

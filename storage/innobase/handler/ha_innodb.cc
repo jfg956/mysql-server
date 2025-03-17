@@ -5424,7 +5424,7 @@ static PSI_metric_info_v1 buffer_metrics[] = {
      "Number of sync reads directly from disk greater than innodb_buffer_pool_read_slow_io_threshold_usec"
      "(innodb_buffer_pool_reads_sync_io_slow_count), "
      "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
-     "(sync reads exclude read ahead and read ahead ramdom)",
+     "(sync reads exclude read-ahead and read-ahead random)",
      MetricOTELType::ASYNC_COUNTER,
      export_vars.buf_pool_reads_sync_io_slow_count),
     simple("reads_sync_io_slow_wait_use",

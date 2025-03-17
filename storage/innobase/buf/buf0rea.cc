@@ -308,10 +308,8 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
   srv_stats.buf_pool_reads.add(count);
 
   if (innodb_session) {
-    ulong usec = innodb_session->last_io_wait_usec;  /* This needs to be above below for obvious reasons. */
-
     innodb_session->needs_last_io_wait_usec = false;
-    innodb_session->last_io_wait_usec = 0;  /* To make sure a value in here do not confuse someone later. */
+    ulong usec = innodb_session->last_io_wait_usec;
 
     /* We need the test to SERVER_OPERATING because of a convoluted reason.
     * If the threshold is set with SET PERSIST, the setting of the variable will
