@@ -314,7 +314,7 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
     /* We need the test to SERVER_OPERATING because of a convoluted reason.
     * If the threshold is set with SET PERSIST, the setting of the variable will
     *   happen after InnoDB initialization.  This means that all IOs happening
-    *   before will use the value from the conf file or the default.  This can
+    *   before use the value from the conf file or the default.  This can
     *   be confusing for the user, so excluding IOs done before SERVER_OPERATING.
     * Obviously, this late setting by SET PERSIST could be considered a bug,
     *   but I / JFG did not yet find a good way to report this. */
@@ -322,7 +322,7 @@ bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
     if (get_server_state() == SERVER_OPERATING && usec > 0) {
       /* We need a counter in addition to srv_stats.buf_pool_reads
        *   because buf_pool_reads is incremented elsewhere
-       *   (buf_read_ahead_random and buf_read_page_background) .*/
+       *   (buf_read_ahead_random and buf_read_page_background). */
       srv_stats.buf_pool_reads_sync_io_count.add(count);
       srv_stats.buf_pool_reads_sync_io_wait_usec.add(usec);
 

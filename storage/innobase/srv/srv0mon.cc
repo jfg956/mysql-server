@@ -248,7 +248,7 @@ static monitor_info_t innodb_counter_info[] = {
      MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_WAIT_USEC},
 
     {"buf_pool_reads_sync_io_slow_count", "buffer",
-     "Number of sync reads directly from disk greater than or equal innodb_buffer_pool_read_slow_io_threshold_usec "
+     "Number of sync reads directly from disk greater than or equal to innodb_buffer_pool_read_slow_io_threshold_usec "
      "(innodb_buffer_pool_reads_sync_io_slow_count)",
      static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
      MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_SLOW_COUNT},

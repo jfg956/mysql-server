@@ -6829,10 +6829,10 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     Performance Schema instrumented os_file_read() and
     os_file_write(). Instead, we should use os_file_read_func()
     and os_file_write_func() */
-    ut_ad(type.is_read() || type.is_write());
     if (type.is_read()) {
       ret = os_file_read_func(type, name, file.m_file, buf, offset, n);
     } else {
+      ut_ad(type.is_write());
       ret = os_file_write_func(type, name, file.m_file, buf, offset, n);
     }
   } else {

@@ -1167,7 +1167,7 @@ struct export_var_t {
    *   but I might be missing something (or I am right and above is a relic of a refactor).
    * If I am wrong, below four comments need to be adjusted.
    * Also, I do not like these variable names, so I am suggesting something
-   *   I like better, if this is unwelcomed, feel free to adjust when merging
+   *   I like better, if this is unwelcome, feel free to adjust when merging
    *   (or asking me to fix the patch) */
   ulint buf_pool_reads_sync_io_count;           /*!< srv_stats.buf_pool_reads_sync_io_count */
   ulint buf_pool_reads_sync_io_wait_usec;       /*!< srv_stats.buf_pool_reads_sync_io_wait_usec */
