@@ -2033,7 +2033,10 @@ const char *thd_innodb_tmpdir(THD *thd) {
 @param[in,out]  thd     MySQL thread handler.
 @return reference to private handler */
 [[nodiscard]] innodb_session_t *&thd_to_innodb_session(THD *thd) {
-  // TODO JFG: code below is duplicated in thd_to_innodb_session_null...
+  /* TODO: code below is duplicated in thd_to_innodb_session_null, so implement
+   *   deduplication of this code, maybe with an inline function or a macro.
+   * In the meantime, keeping this comment to make sure if below is modified,
+   *   the other function is also modified. */
   innodb_session_t *&innodb_session =
       *(innodb_session_t **)thd_ha_data(thd, innodb_hton_ptr);
 
@@ -2049,7 +2052,10 @@ const char *thd_innodb_tmpdir(THD *thd) {
 @param[in,out]  thd     MySQL thread handler.
 @return reference to private handler */
 [[nodiscard]] innodb_session_t *&thd_to_innodb_session_null(THD *thd) {
-  // TODO JFG: code below is duplicated from thd_to_innodb_session...
+  /* TODO: code below is duplicated from thd_to_innodb_session, so implement
+   *   deduplication of this code, maybe with an inline function or a macro.
+   * In the meantime, keeping this comment to make sure if below is modified,
+   *   the other function is also modified. */
   return *(innodb_session_t **)thd_ha_data(thd, innodb_hton_ptr);
 }
 
@@ -5398,8 +5404,8 @@ static PSI_metric_info_v1 buffer_metrics[] = {
      * I am guessing this is related to OpenTelemetry,
      *   and I opened a bug about this: https://bugs.mysql.com/bug.php?id=117659.
      * If it is indeed related to OpenTelemetry, I cannot test this
-     *   because it is an Enterprise feature, which I not have a license to use.
-     * I also think that this implementation is duplicating a lot of code.
+     *   because it is an Enterprise feature, which I do not have a license to use.
+     * I also dissaprove that this implementation duplicates a lot of code.
      *   I wished this array was initialized at runtime from the InnoDB Metric
      *   array. */
     // TODO JFG: before submitting the patch, make sure comments in below match srv0mon.cc.
@@ -22810,12 +22816,12 @@ static MYSQL_SYSVAR_BOOL(
  *   - io_read_sync_page_slow_{count,wait_usec,slow_count,slow_wait_usec}
  * ...because I thought these belongs in buf instead of os
  *   (most of the accounting logic is in buf, more precisely buf_read_page),
- *   but I could be convinced of doing the other way around. */
+ *   but I could be convinced of doing it the other way around. */
 /* In below, max set to 1 hour: IOs longer than that would be catastrophic. */
 static MYSQL_SYSVAR_ULONG(buffer_pool_read_sync_slow_io_threshold_usec, srv_buffer_pool_read_sync_slow_io_threshold_usec,
                           PLUGIN_VAR_RQCMDARG,
                           "The threshold, in microseconds, from which IOs for sync buffer pool reads "
-                          "(sync reads exclude read ahead and read ahead ramdom), "
+                          "(sync reads exclude read-ahead and read-ahead random), "
                           "are considered slow and accounted as such "
                           "(in global statuses innodb_buffer_pool_reads_sync_io_slow_{count,wait_usec} "
                           "and InnoDB Metrics buf_pool_reads_sync_io_slow_{count,wait_usec})",

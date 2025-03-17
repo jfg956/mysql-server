@@ -273,6 +273,7 @@ and `os_aio_func`:
 
 dbdeployer deploy single mysql_9.2.0
 
+# Utility function for below.
 function set_bin() {
   ( # In a sub-shell to not have to undo cd.
     cd ~/opt/mysql/mysql_9.2.0/bin
@@ -290,6 +291,9 @@ function set_bin() {
     ls -l mysqld
   )
 }
+
+#####################
+# Quick feature test.
 
 {
 gss="$(echo {count,wait_usec,slow_count,slow_wait_usec})"
@@ -381,7 +385,7 @@ In conf. File
 | Innodb_buffer_pool_reads_sync_io_wait_usec      | 2889765        |
 +-------------------------------------------------+----------------+
 
-### Below with fix.
+# Below with fix.
 
 Set Persist
 +-------------------------------------------------+----------------+
@@ -403,10 +407,9 @@ In conf. File
 | Innodb_buffer_pool_reads_sync_io_wait_usec      | 42548          |
 +-------------------------------------------------+----------------+
 
-...
 
-################
-# Feature tests.
+############
+# More tests.
 
 nb_rows=$((3*1024*1024*1024 / (16*1024) * 4))
 
