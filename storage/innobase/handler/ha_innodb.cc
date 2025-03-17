@@ -5404,16 +5404,13 @@ static PSI_metric_info_v1 buffer_metrics[] = {
      * I am guessing this is related to OpenTelemetry,
      *   and I opened a bug about this: https://bugs.mysql.com/bug.php?id=117659.
      * If it is indeed related to OpenTelemetry, I cannot test this
-     *   because it is an Enterprise feature, which I do not have a license to use.
-     * I also dissaprove that this implementation duplicates a lot of code.
-     *   I wished this array was initialized at runtime from the InnoDB Metric
-     *   array. */
+     *   because it is an Enterprise feature, which I do not have a license to use. */
     // TODO JFG: before submitting the patch, make sure comments in below match srv0mon.cc.
     simple("reads_sync_io_count",
      "",
      "Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count), "
      "only incremented when the global variable innodb_buffer_pool_read_sync_slow_io_threshold_usec is non-negative "
-     "(sync reads exclude read ahead and read ahead ramdom)",
+     "(sync reads exclude read-ahead and read-ahead random)",
      MetricOTELType::ASYNC_COUNTER,
      export_vars.buf_pool_reads_sync_io_count),
     simple("reads_sync_io_wait_usec",
@@ -22817,7 +22814,7 @@ static MYSQL_SYSVAR_BOOL(
  * ...because I thought these belongs in buf instead of os
  *   (most of the accounting logic is in buf, more precisely buf_read_page),
  *   but I could be convinced of doing it the other way around. */
-/* In below, max set to 1 hour: IOs longer than that would be catastrophic. */
+/* Below, max set to 1 hour: IOs longer than that would be catastrophic. */
 static MYSQL_SYSVAR_ULONG(buffer_pool_read_sync_slow_io_threshold_usec, srv_buffer_pool_read_sync_slow_io_threshold_usec,
                           PLUGIN_VAR_RQCMDARG,
                           "The threshold, in microseconds, from which IOs for sync buffer pool reads "
@@ -22826,7 +22823,7 @@ static MYSQL_SYSVAR_ULONG(buffer_pool_read_sync_slow_io_threshold_usec, srv_buff
                           "(in global statuses innodb_buffer_pool_reads_sync_io_slow_{count,wait_usec} "
                           "and InnoDB Metrics buf_pool_reads_sync_io_slow_{count,wait_usec})",
                           nullptr, nullptr, /* check, update */
-                          (((ulong)1000)*1000*60*60), 0, (((ulong)1000)*1000*60*60), /* def / max, min, max (1 hour) */
+                          (((ulong)1000)*1000*60*60), 0, (((ulong)1000)*1000*60*60), /* def (same as max), min, max (1 hour) */
                           0 /* blk, unclear what this is, doc (link below) not helpful, copied from others */);
 /* doc link for blk above:
  * https://dev.mysql.com/doc/extending-mysql/8.0/en/plugin-status-system-variables.html */

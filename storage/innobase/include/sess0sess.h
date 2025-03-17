@@ -161,7 +161,7 @@ class innodb_session_t {
    * And yes, I agree this is ugly, but I did not think of a better way.
    *   If you know / find a better way, let me know and I will improve the patch. */
   bool needs_last_io_wait_usec = false;
-  ulong last_io_wait_usec;
+  ulong last_io_wait_usec = 0;
 
  private:
   /** Current session's user temp tablespace */

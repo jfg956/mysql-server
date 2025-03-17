@@ -798,7 +798,7 @@ bool srv_buffer_pool_dump_at_shutdown = true;
 bool srv_buffer_pool_load_at_startup = true;
 
 /* Documented in ha_innodb.cc. */
-/* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+/* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix it. */
 ulong srv_buffer_pool_read_sync_slow_io_threshold_usec;
 
 /** Slot index in the srv_sys->sys_threads array for the purge thread. */

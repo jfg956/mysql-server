@@ -118,7 +118,7 @@ struct srv_stats_t {
   ulint_ctr_1_t buf_pool_reads;
 
   /* Documented in srv0mon.cc. */
-  /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+  /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix it. */
   ulint_ctr_1_t buf_pool_reads_sync_io_count;
   ulint_ctr_1_t buf_pool_reads_sync_io_wait_usec;
   ulint_ctr_1_t buf_pool_reads_sync_io_slow_count;
@@ -335,7 +335,7 @@ extern bool srv_buffer_pool_dump_at_shutdown;
 extern bool srv_buffer_pool_load_at_startup;
 
 /* Documented in ha_innodb.cc. */
-/* It looks pointless to duplicate comments; if needed, let me / JFG know and I will fix. */
+/* It looks pointless to duplicate comments; if needed, let me / JFG know and I will fix it. */
 extern ulong srv_buffer_pool_read_sync_slow_io_threshold_usec;
 
 /* Whether to disable file system cache if it is defined */

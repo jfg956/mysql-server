@@ -237,7 +237,7 @@ static monitor_info_t innodb_counter_info[] = {
 
     {"buf_pool_reads_sync_io_count", "buffer",
      "Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count) "
-     "(sync reads exclude read ahead and read ahead ramdom)",
+     "(sync reads exclude read-ahead and read-ahead random)",
      static_cast<monitor_type_t>(MONITOR_EXISTING | MONITOR_DEFAULT_ON),
      MONITOR_DEFAULT_START, MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_COUNT},
 
@@ -1660,25 +1660,25 @@ void srv_mon_process_existing_counter(
       break;
 
     /* Documented in "static monitor_info_t innodb_counter_info[]" above. */
-    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix it. */
     case MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_COUNT:
       value = srv_stats.buf_pool_reads_sync_io_count;
       break;
 
     /* Documented in "static monitor_info_t innodb_counter_info[]"" above. */
-    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix it. */
     case MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_WAIT_USEC:
       value = srv_stats.buf_pool_reads_sync_io_wait_usec;
       break;
 
     /* Documented in "static monitor_info_t innodb_counter_info[]"" above. */
-    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix it. */
     case MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_SLOW_COUNT:
       value = srv_stats.buf_pool_reads_sync_io_slow_count;
       break;
 
     /* Documented in "static monitor_info_t innodb_counter_info[]"" above. */
-    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix. */
+    /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix it. */
     case MONITOR_OVLD_BUF_POOL_READS_SYNC_IO_SLOW_WAIT_USEC:
       value = srv_stats.buf_pool_reads_sync_io_slow_wait_usec;
       break;
