@@ -1178,6 +1178,31 @@ static SHOW_VAR innodb_status_variables[] = {
      SHOW_SCOPE_GLOBAL},
     {"buffer_pool_reads", (char *)&export_vars.innodb_buffer_pool_reads,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    /* Note JFG:
+     * We could consider not exposing the next four counters as Global Statuses
+     *   and only expose them as InnoDB Metrics.
+     * IMHO, having both statuses and metrics is complexity that we should fight,
+     *   but out of the scope of my patch.
+     * If I had a saying on the subject, I think InnoDB Global Statuses should be
+     *   deprecated in favor of InnoDB Metrics (this might need adding metrics which do
+     *   not have statuses, and at the same time, deprecating other counter interfaces
+     *   like I_S.INNODB_CMP in favor of metrics).
+     * Not exposing the four counters below could nudge people in using the
+     *   good interface (metrics), not the deprecated one, hence considering not adding them.
+     * But this should NOT be OpenTelemetry only, because I want my patch to be in MySQL Community. */
+    {"buffer_pool_reads_sync_io_count",
+     (char *)&export_vars.buf_pool_reads_sync_io_count,
+     SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    {"buffer_pool_reads_sync_io_wait_usec",
+     (char *)&export_vars.buf_pool_reads_sync_io_wait_usec,
+     SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    {"buffer_pool_reads_sync_io_slow_count",
+     (char *)&export_vars.buf_pool_reads_sync_io_slow_count,
+     SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    {"buffer_pool_reads_sync_io_slow_wait_usec",
+     (char *)&export_vars.buf_pool_reads_sync_io_slow_wait_usec,
+     SHOW_LONG, SHOW_SCOPE_GLOBAL},
+    /* End note JFG, see above for details. */
     {"buffer_pool_wait_free", (char *)&export_vars.innodb_buffer_pool_wait_free,
      SHOW_LONG, SHOW_SCOPE_GLOBAL},
     {"buffer_pool_write_requests",
@@ -2004,20 +2029,30 @@ const char *thd_innodb_tmpdir(THD *thd) {
   return tmp_dir;
 }
 
-/** Obtain the private handler of InnoDB session specific data.
-@param[in,out]  thd     MySQL thread handler.
-@return reference to private handler */
-
-[[nodiscard]] innodb_session_t *&thd_to_innodb_session(THD *thd) {
+[[nodiscard]] static inline innodb_session_t *&thd_to_innodb_session(THD *thd, bool return_null) {
   innodb_session_t *&innodb_session =
       *(innodb_session_t **)thd_ha_data(thd, innodb_hton_ptr);
 
-  if (innodb_session != nullptr) {
+  if (innodb_session != nullptr || return_null) {
     return (innodb_session);
   }
 
   innodb_session = ut::new_withkey<innodb_session_t>(UT_NEW_THIS_FILE_PSI_KEY);
   return (innodb_session);
+}
+
+/** Obtain the private handler of InnoDB session specific data.
+@param[in,out]  thd     MySQL thread handler.
+@return reference to private handler */
+[[nodiscard]] innodb_session_t *&thd_to_innodb_session(THD *thd) {
+  return thd_to_innodb_session(thd, false);
+}
+
+/** Same as thd_to_innodb_session, but returns null if the handler does not exist (without allocating memory).
+@param[in,out]  thd     MySQL thread handler.
+@return reference to private handler */
+[[nodiscard]] innodb_session_t *&thd_to_innodb_session_null(THD *thd) {
+  return thd_to_innodb_session(thd, true);
 }
 
 /** Obtain the InnoDB transaction of a MySQL thread.
@@ -5359,6 +5394,38 @@ static PSI_metric_info_v1 buffer_metrics[] = {
      "Number of reads directly from disk (innodb_buffer_pool_reads)",
      MetricOTELType::ASYNC_COUNTER,
      export_vars.innodb_buffer_pool_reads),
+
+    /* I / JFG do not fully understand this,
+     *   so I am blindly copying from above (innodb_buffer_pool_reads).
+     * I am guessing this is related to OpenTelemetry,
+     *   and I opened a bug about this: https://bugs.mysql.com/bug.php?id=117659.
+     * If it is indeed related to OpenTelemetry, I cannot test this
+     *   because it is an Enterprise feature, which I do not have a license to use. */
+    simple("reads_sync_io_count",
+     "",
+     "Number of sync reads directly from disk (innodb_buffer_pool_reads_sync_io_count) "
+     "(sync reads exclude read-ahead and read-ahead random)",
+     MetricOTELType::ASYNC_COUNTER,
+     export_vars.buf_pool_reads_sync_io_count),
+    simple("reads_sync_io_wait_usec",
+     "",
+     "Total wait time, in microseconds, for buf_pool_reads_sync_io_count "
+     "(innodb_buffer_pool_reads_sync_io_wait_usec)",
+     MetricOTELType::ASYNC_COUNTER,
+     export_vars.buf_pool_reads_sync_io_wait_usec),
+    simple("reads_sync_io_slow_count",
+     "",
+     "Number of sync reads directly from disk greater than or equal to innodb_buffer_pool_read_slow_io_threshold_usec "
+     "(innodb_buffer_pool_reads_sync_io_slow_count)",
+     MetricOTELType::ASYNC_COUNTER,
+     export_vars.buf_pool_reads_sync_io_slow_count),
+    simple("reads_sync_io_slow_wait_use",
+     "",
+     "Total wait time, in microseconds, for buf_pool_reads_sync_io_slow_count "
+     "(innodb_buffer_pool_reads_sync_io_slow_wait_usec)",
+     MetricOTELType::ASYNC_COUNTER,
+     export_vars.buf_pool_reads_sync_io_slow_wait_usec),
+
     simple("wait_free",
      "",
      "Number of times waited for free buffer (innodb_buffer_pool_wait_free)",
@@ -22730,6 +22797,29 @@ static MYSQL_SYSVAR_BOOL(
     "Load the buffer pool from a file named @@innodb_buffer_pool_filename",
     nullptr, nullptr, true);
 
+/* I / JFG chose these names...
+ *   - variable: buffer_pool_read_sync_slow_io_threshold_usec
+ *   - metrics:  buf_pool_reads_sync_io_{count,wait_usec,slow_count,slow_wait_usec}
+ * ...over these...
+ *   - io_read_sync_page_slow_threshold_usec
+ *   - io_read_sync_page_slow_{count,wait_usec,slow_count,slow_wait_usec}
+ * ...because I thought these belongs in buf instead of os
+ *   (most of the accounting logic is in buf, more precisely buf_read_page),
+ *   but I could be convinced of doing it the other way around. */
+/* Below, max is set to 1 hour: IOs longer than that would be catastrophic ! */
+static MYSQL_SYSVAR_ULONG(buffer_pool_read_sync_slow_io_threshold_usec, srv_buffer_pool_read_sync_slow_io_threshold_usec,
+                          PLUGIN_VAR_RQCMDARG,
+                          "The threshold, in microseconds, from which IOs for sync buffer pool reads "
+                          "are considered slow and accounted as such "
+                          "(in global statuses innodb_buffer_pool_reads_sync_io_slow_{count,wait_usec} "
+                          "and InnoDB Metrics buf_pool_reads_sync_io_slow_{count,wait_usec}) "
+                          "(sync reads exclude read-ahead and read-ahead random)",
+                          nullptr, nullptr, /* check, update */
+                          (((ulong)1000)*1000*60*60), 0, (((ulong)1000)*1000*60*60), /* def (same as max), min, max (1 hour) */
+                          0 /* blk, unclear what this is, doc (link below) not helpful, copied from others */);
+/* doc link for blk above:
+ * https://dev.mysql.com/doc/extending-mysql/8.0/en/plugin-status-system-variables.html */
+
 static MYSQL_SYSVAR_ULONG(lru_scan_depth, srv_LRU_scan_depth,
                           PLUGIN_VAR_RQCMDARG,
                           "How deep to scan LRU to keep it clean", nullptr,
@@ -23510,6 +23600,7 @@ static SYS_VAR *innobase_system_variables[] = {
     MYSQL_SYSVAR(buffer_pool_load_now),
     MYSQL_SYSVAR(buffer_pool_load_abort),
     MYSQL_SYSVAR(buffer_pool_load_at_startup),
+    MYSQL_SYSVAR(buffer_pool_read_sync_slow_io_threshold_usec),
     MYSQL_SYSVAR(lru_scan_depth),
     MYSQL_SYSVAR(flush_neighbors),
     MYSQL_SYSVAR(checksum_algorithm),

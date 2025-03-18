@@ -41,15 +41,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
 #include "os0file.h"
 #include "fil0fil.h"
+#include "dict0dd.h"
+#include "current_thd.h"
 #include "ha_prototypes.h"
 #include "log0write.h"
 #include "my_dbug.h"
 #include "my_io.h"
 
-#include "fil0fil.h"
-#include "ha_prototypes.h"
+#include "fil0fil.h"        /* I / JFG do not understand this duplicate include with above, maybe should be removed, but out of scope of my patch. */
+#include "ha_prototypes.h"  /* I / JFG do not understand this duplicate include with above, maybe should be removed, but out of scope of my patch. */
 #include "my_macros.h"
-#include "os0file.h"
+#include "os0file.h"        /* I / JFG do not understand this duplicate include with above, maybe should be removed, but out of scope of my patch. */
 #include "sql_const.h"
 #include "srv0srv.h"
 #include "srv0start.h"
@@ -6802,6 +6804,20 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
   ut_ad((n & 0xFFFFFFFFUL) == n);
 #endif /* _WIN32 */
 
+  dberr_t ret;
+
+  innodb_session_t *innodb_session_tmp = nullptr;
+  innodb_session_t *&innodb_session = innodb_session_tmp;
+  bool needs_now = false;
+  std::chrono::steady_clock::time_point start;
+
+  /* I / JFG am guessing that we can end-up here with current_thd or innodb_session being null, so let's be safe. */
+  if (current_thd
+      && (innodb_session = thd_to_innodb_session_null(current_thd))
+      && (needs_now = innodb_session->needs_last_io_wait_usec)) {
+    start = std::chrono::steady_clock::now();
+  }
+
   if (aio_mode == AIO_mode::SYNC) {
     /* This is actually an ordinary synchronous read or write:
     no need to use an i/o-handler thread. NOTE that if we use
@@ -6815,13 +6831,18 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     os_file_write(). Instead, we should use os_file_read_func()
     and os_file_write_func() */
     if (type.is_read()) {
-      return (os_file_read_func(type, name, file.m_file, buf, offset, n));
-    }
-
+      ret = os_file_read_func(type, name, file.m_file, buf, offset, n);
+    } else {
+    /* Below is poorly indented to make the diff easier to understand.
+     * It can be reformatted when merging, maybe in a different merge commit.
+     * I left this comment for clarity of the patch, it can be removed when merging. */
     ut_ad(type.is_write());
-    return (os_file_write_func(type, name, file.m_file, buf, offset, n));
-  }
-
+      ret = os_file_write_func(type, name, file.m_file, buf, offset, n);
+    }
+  } else {
+    /* This block is poorly indented to make the diff easier to understand.
+     * It can be reformatted when merging, maybe in a different merge commit.
+     * I left this comment for clarity of the patch, it can be removed when merging. */
   const auto array = AIO::select_slot_array(type, read_only, aio_mode);
   bool io_dispatched = false;
   while (!io_dispatched) {
@@ -6912,10 +6933,19 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
         return DB_IO_ERROR;
       }
     }
+  } /* End of poorly indented block. */
+
+    /* AIO request was dispatched successfully! */
+    ret = DB_SUCCESS;
   }
 
-  /* AIO request was dispatched successfully! */
-  return (DB_SUCCESS);
+  if (needs_now) {
+    auto end = std::chrono::steady_clock::now();
+    auto time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    innodb_session->last_io_wait_usec = time_us;
+  }
+
+  return ret;
 }
 
 /** Simulated AIO handler for reaping IO requests */

@@ -117,6 +117,13 @@ struct srv_stats_t {
   a disk page */
   ulint_ctr_1_t buf_pool_reads;
 
+  /* Documented in srv0mon.cc. */
+  /* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix it. */
+  ulint_ctr_1_t buf_pool_reads_sync_io_count;
+  ulint_ctr_1_t buf_pool_reads_sync_io_wait_usec;
+  ulint_ctr_1_t buf_pool_reads_sync_io_slow_count;
+  ulint_ctr_1_t buf_pool_reads_sync_io_slow_wait_usec;
+
   /** Number of data read in total (in bytes) */
   ulint_ctr_1_t data_read;
 
@@ -326,6 +333,10 @@ extern char *srv_buf_dump_filename;
 and/or load it during startup. */
 extern bool srv_buffer_pool_dump_at_shutdown;
 extern bool srv_buffer_pool_load_at_startup;
+
+/* Documented in ha_innodb.cc. */
+/* It looks pointless to duplicate comments; if needed, let me / JFG know and I will fix it. */
+extern ulong srv_buffer_pool_read_sync_slow_io_threshold_usec;
 
 /* Whether to disable file system cache if it is defined */
 extern bool srv_disable_sort_file_cache;
@@ -1152,6 +1163,16 @@ struct export_var_t {
 #endif                                     /* UNIV_DEBUG */
   ulint innodb_buffer_pool_read_requests;  /*!< buf_pool->stat.n_page_gets */
   ulint innodb_buffer_pool_reads;          /*!< srv_buf_pool_reads */
+  /* To me / JFG, it looks like above "srv_buf_pool_reads" should be "srv_stats.buf_pool_reads",
+   *   but I might be missing something (or I am right and above is a relic of a refactor).
+   * If I am wrong, below four comments need to be adjusted.
+   * Also, I do not like these variable names, so I am suggesting something
+   *   I like better, if this is unwelcome, feel free to adjust when merging
+   *   (or asking me to fix the patch) */
+  ulint buf_pool_reads_sync_io_count;           /*!< srv_stats.buf_pool_reads_sync_io_count */
+  ulint buf_pool_reads_sync_io_wait_usec;       /*!< srv_stats.buf_pool_reads_sync_io_wait_usec */
+  ulint buf_pool_reads_sync_io_slow_count;      /*!< srv_stats.buf_pool_reads_sync_io_slow_count */
+  ulint buf_pool_reads_sync_io_slow_wait_usec;  /*!< srv_stats.buf_pool_reads_sync_io_slow_wait_usec */
   ulint innodb_buffer_pool_wait_free;      /*!< srv_buf_pool_wait_free */
   ulint innodb_buffer_pool_pages_flushed;  /*!< srv_buf_pool_flushed */
   ulint innodb_buffer_pool_write_requests; /*!< srv_buf_pool_write_requests */
