@@ -797,6 +797,10 @@ and/or load it during startup. */
 bool srv_buffer_pool_dump_at_shutdown = true;
 bool srv_buffer_pool_load_at_startup = true;
 
+/* Documented in ha_innodb.cc. */
+/* It looks pointless to duplicate documentation; if needed, let me / JFG know and I will fix it. */
+ulong srv_buffer_pool_read_sync_slow_io_threshold_usec;
+
 /** Slot index in the srv_sys->sys_threads array for the purge thread. */
 static const ulint SRV_PURGE_SLOT = 1;
 
@@ -1614,6 +1618,11 @@ void srv_export_innodb_status(void) {
   export_vars.innodb_buffer_pool_pages_flushed = srv_stats.buf_pool_flushed;
 
   export_vars.innodb_buffer_pool_reads = srv_stats.buf_pool_reads;
+
+  export_vars.buf_pool_reads_sync_io_count          = srv_stats.buf_pool_reads_sync_io_count;
+  export_vars.buf_pool_reads_sync_io_wait_usec      = srv_stats.buf_pool_reads_sync_io_wait_usec;
+  export_vars.buf_pool_reads_sync_io_slow_count     = srv_stats.buf_pool_reads_sync_io_slow_count;
+  export_vars.buf_pool_reads_sync_io_slow_wait_usec = srv_stats.buf_pool_reads_sync_io_slow_wait_usec;
 
   export_vars.innodb_buffer_pool_read_ahead_rnd = stat.n_ra_pages_read_rnd;
 

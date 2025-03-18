@@ -157,6 +157,12 @@ class innodb_session_t {
   Currently, limited to intrinsic temporary tables only. */
   table_cache_t m_open_tables;
 
+  /* I / JFG wished there was a better way to carry this from os_aio_func to buf_read_page.
+   * And yes, I agree this is ugly, but I did not think of a better way.
+   *   If you know / find a better way, let me know and I will improve the patch. */
+  bool needs_last_io_wait_usec = false;
+  ulong last_io_wait_usec = 0;
+
  private:
   /** Current session's user temp tablespace */
   ibt::Tablespace *m_usr_temp_tblsp;
