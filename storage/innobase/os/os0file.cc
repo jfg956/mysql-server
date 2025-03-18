@@ -6805,15 +6805,16 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
 #endif /* _WIN32 */
 
   dberr_t ret;
-  bool needs_last_io_wait_usec = false;  /* If not needed, do not call std::chrono::steady_clock::now(). */
-  std::chrono::steady_clock::time_point start;
 
   innodb_session_t *innodb_session_tmp = nullptr;
   innodb_session_t *&innodb_session = innodb_session_tmp;
+  bool needs_now = false;
+  std::chrono::steady_clock::time_point start;
+
   /* I / JFG am guessing that we can end-up here with current_thd or innodb_session being null, so let's be safe. */
   if (current_thd
       && (innodb_session = thd_to_innodb_session_null(current_thd))
-      && (needs_last_io_wait_usec = innodb_session->needs_last_io_wait_usec)) {
+      && (needs_now = innodb_session->needs_last_io_wait_usec)) {
     start = std::chrono::steady_clock::now();
   }
 
@@ -6832,7 +6833,10 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     if (type.is_read()) {
       ret = os_file_read_func(type, name, file.m_file, buf, offset, n);
     } else {
-      ut_ad(type.is_write());
+    /* Below is poorly indented to make the diff easier to understand.
+     * It can be reformatted when merging, maybe in a different merge commit.
+     * I left this comment for clarity of the patch, it can be removed when merging. */
+    ut_ad(type.is_write());
       ret = os_file_write_func(type, name, file.m_file, buf, offset, n);
     }
   } else {
@@ -6935,7 +6939,7 @@ dberr_t os_aio_func(IORequest &type, AIO_mode aio_mode, const char *name,
     ret = DB_SUCCESS;
   }
 
-  if (needs_last_io_wait_usec) {
+  if (needs_now) {
     auto end = std::chrono::steady_clock::now();
     auto time_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     innodb_session->last_io_wait_usec = time_us;
