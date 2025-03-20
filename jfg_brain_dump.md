@@ -12,7 +12,6 @@ export mysql_v=8.0.36
 export gtid='-c gtid_mode=ON -c enforce-gtid-consistency -c relay-log-recovery=on'
 
 (
-
 export bin_dir="$HOME/opt/mysql/mysql_$mysql_v"
 build_dir="$HOME/src/github/https/jfg956/mysql-server/worktrees/mysql-${mysql_v}_bug113598/build/default"
 sb_dir="$HOME/sandboxes/rsandbox_mysql_${mysql_v//./_}"
@@ -36,32 +35,32 @@ function create_sb() {
   cd $sb_dir; ./stop_all > /dev/null
 }
 
-create_sb "$gtid"
-
 function run_test() {
   ./start_all > /dev/null
-  test "$1" == "" || ./m <<< "set global rpl_semi_sync_master_log_gtid_timeout = $1"
-  ./m <<< "DROP DATABASE IF EXISTS test_jfg"
+  ( s="SET GLOBAL rpl_semi_sync_master_"; ./m <<< "DROP DATABASE IF EXISTS test_jfg; ${s}timeout=1000; ${s}wait_point=$1"; "
+  test "$2" == "" || ./m <<< "SET GLOBAL rpl_semi_sync_master_log_gtid_timeout = $2"
   ( ./node1/stop > /dev/null& ./node2/stop >/dev/null& wait; )
-  ./m <<< "SET GLOBAL rpl_semi_sync_master_timeout = 1000"
   local sql="SELECT now(), @@GLOBAL.gtid_executed"
   ./m -N <<< "$sql; CREATE DATABASE test_jfg; $sql"
   sleep 1; grep -e "Timeout waiting for reply of binlog" master/data/msandbox.err | tail -n 1
   ./stop_all > /dev/null
 }
 
-set_v org;       echo; echo "# org with GTID:";                        run_test "";
-set_v bug113598; echo; echo "# bug113598 with GTID logging disabled:"; run_test OFF
-set_v bug113598; echo; echo "# bug113598 with GTID logging enabled:";  run_test ON
+is="AFTER_SYNC AFTER_COMMIT"
+
+create_sb "$gtid"
+for i in $is; do
+  b=org; set_v $b; echo; echo "# With GTID, $i, $b:"; run_test $i "";
+  set_v bug113598; echo; echo "# bug113598 with GTID logging disabled:"; run_test OFF
+  set_v bug113598; echo; echo "# bug113598 with GTID logging enabled:";  run_test ON
+done
 
 create_sb
-
 set_v org;       echo; echo "# org without GTID:";                        run_test ""
 set_v bug113598; echo; echo "# bug113598 without GTID logging disabled:"; run_test OFF
 set_v bug113598; echo; echo "# bug113598 without GTID logging enabled:";  run_test ON
 
 set_v org; rm -rf $sb_dir
-
 )
 
 # org with GTID:
