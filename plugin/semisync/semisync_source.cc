@@ -29,11 +29,11 @@
 #include "my_byteorder.h"
 #include "my_compiler.h"
 #include "my_systime.h"
-#include "sql/mysqld.h"  // max_connections
-#if defined(ENABLED_DEBUG_SYNC)
 #include "sql/current_thd.h"
-#include "sql/debug_sync.h"
+#include "sql/mysqld.h"  // max_connections
 #include "sql/sql_class.h"
+#if defined(ENABLED_DEBUG_SYNC)
+#include "sql/debug_sync.h"
 #endif
 
 #define TIME_THOUSAND 1000
@@ -61,6 +61,7 @@ unsigned long long rpl_semi_sync_source_net_wait_time = 0;
 unsigned long long rpl_semi_sync_source_trx_wait_time = 0;
 bool rpl_semi_sync_source_wait_no_replica = true;
 unsigned int rpl_semi_sync_source_wait_for_replica_count = 1;
+bool rpl_semi_sync_source_log_gtid_timeout;
 
 static int getWaitTime(const struct timespec &start_ts);
 
@@ -788,9 +789,29 @@ int ReplSemiSyncMaster::commitTrx(const char *trx_wait_binlog_name,
 
       if (wait_result != 0) {
         /* This is a real wait timeout. */
-        LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT,
-               trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
-               reply_file_name_, (unsigned long)reply_file_pos_);
+        if (!rpl_semi_sync_source_log_gtid_timeout) {
+          LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT,
+                 trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
+                 reply_file_name_, (unsigned long)reply_file_pos_);
+        } else {
+          /* Get the gtid of this transaction for logging. */
+          const Gtid *gtid = &(current_thd->owned_gtid);
+
+          /*  Gtid::to_string does not handle ANONYMOUS, so extra work is needed. */
+          Gtid_specification spec;
+          if (gtid->sidno == THD::OWNED_SIDNO_ANONYMOUS) {
+            spec.set_anonymous();
+          } else {
+            spec.set(*gtid);
+          }
+
+          char gtid_buf[spec.MAX_TEXT_LENGTH + 1];
+          spec.to_string(global_sid_map, gtid_buf, true);
+
+          LogErr(WARNING_LEVEL, ER_SEMISYNC_WAIT_FOR_BINLOG_TIMEDOUT_GTID,
+                 trx_wait_binlog_name, (unsigned long)trx_wait_binlog_pos,
+                 gtid_buf, reply_file_name_, (unsigned long)reply_file_pos_);
+        }
         rpl_semi_sync_source_wait_timeouts++;
 
         /* switch semi-sync off */
