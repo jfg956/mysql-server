@@ -1311,8 +1311,12 @@ bool dd_drop_tablespace(dd::cache::Dictionary_client *dd_client,
 /** Obtain the private handler of InnoDB session specific data.
 @param[in,out]  thd     MySQL thread handler.
 @return reference to private handler */
-
 [[nodiscard]] innodb_session_t *&thd_to_innodb_session(THD *thd);
+
+/** Same as thd_to_innodb_session, but returns null if the handler does not exist (without allocating memory).
+@param[in,out]  thd     MySQL thread handler.
+@return reference to private handler */
+[[nodiscard]] innodb_session_t *&thd_to_innodb_session_null(THD *thd);
 
 /** Look up a column in a table using the system_charset_info collation.
 @param[in]      dd_table        data dictionary table

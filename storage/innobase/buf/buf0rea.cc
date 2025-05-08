@@ -40,6 +40,9 @@ this program; if not, write to the Free Software Foundation, Inc.,
 #include "buf0lru.h"
 #include "buf0rea.h"
 #include "fil0fil.h"
+#include "dict0dd.h"
+#include "current_thd.h"
+#include "mysqld.h"
 #include "ha_prototypes.h"
 #include "ibuf0ibuf.h"
 #include "log0recv.h"
@@ -288,11 +291,47 @@ read_ahead:
 bool buf_read_page(const page_id_t &page_id, const page_size_t &page_size) {
   ulint count;
   dberr_t err;
+  innodb_session_t *innodb_session_tmp = nullptr;
+  innodb_session_t *&innodb_session = innodb_session_tmp;
+
+  /* We do not know for sure if buf_read_page_low will generate an IO.
+   * With below assignment to 0, if the value is back as greater than 0, then there was an IO. */
+  /* I / JFG am guessing that we can end-up here with current_thd or innodb_session being null, so let's be safe. */
+  if (current_thd && (innodb_session = thd_to_innodb_session_null(current_thd))) {
+    innodb_session->needs_last_io_wait_usec = true;
+    innodb_session->last_io_wait_usec = 0;
+  }
 
   count = buf_read_page_low(&err, true, 0, BUF_READ_ANY_PAGE, page_id,
                             page_size, false);
 
   srv_stats.buf_pool_reads.add(count);
+
+  if (innodb_session) {
+    innodb_session->needs_last_io_wait_usec = false;
+    ulong usec = innodb_session->last_io_wait_usec;
+
+    /* We need the test to SERVER_OPERATING because of a convoluted reason.
+    * If the threshold is set with SET PERSIST, the setting of the variable will
+    *   happen after InnoDB initialization.  This means that all IOs happening
+    *   before use the value from the conf file or the default.  This can
+    *   be confusing for the user, so excluding IOs done before SERVER_OPERATING.
+    * Obviously, this late setting by SET PERSIST could be considered a bug,
+    *   but I / JFG did not yet find a good way to report this. */
+    /* Reminder: there was an io only if usec > 0. */
+    if (get_server_state() == SERVER_OPERATING && usec > 0) {
+      /* We need a counter in addition to srv_stats.buf_pool_reads
+       *   because buf_pool_reads is incremented elsewhere
+       *   (buf_read_ahead_random and buf_read_page_background). */
+      srv_stats.buf_pool_reads_sync_io_count.add(count);
+      srv_stats.buf_pool_reads_sync_io_wait_usec.add(usec);
+
+      if (usec >= srv_buffer_pool_read_sync_slow_io_threshold_usec) {
+        srv_stats.buf_pool_reads_sync_io_slow_count.add(count);
+        srv_stats.buf_pool_reads_sync_io_slow_wait_usec.add(usec);
+      }
+    }
+  }
 
   if (err == DB_TABLESPACE_DELETED) {
     ib::error(ER_IB_MSG_141) << "trying to read page " << page_id
